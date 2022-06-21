@@ -117,11 +117,13 @@ class TokenType(enum.Enum):
     fork_join_xor = Token(r"\|\|\|")
 
     double_exclam = Token(r"!!", formula_type=FormulaType.achieve_later)
-    exclam        = Token(r"!", formula_type=FormulaType.achieve, goal_type=GoalType.achievement)
+    exclam        = Token(r"!", formula_type=FormulaType.C, goal_type=GoalType.achievement)
+    almendra      = Token(r"almendra", formula_type=FormulaType.almendra, goal_type=GoalType.almendra)
     question      = Token(r"\?", formula_type=FormulaType.test, goal_type=GoalType.test)
     minus_plus    = Token(r"-\+", formula_type=FormulaType.replace)
 
     op_not        = Token(r"not")
+    nuez          = Token(r"nuez", trigger=Trigger.nuez, formula_type=FormulaType.nuez)
     op_plus       = Token(r"\+", unary_op=UnaryOp.op_pos, add_op=BinaryOp.op_add, trigger=Trigger.addition, formula_type=FormulaType.add)
     op_minus      = Token(r"-", unary_op=UnaryOp.op_neg, add_op=BinaryOp.op_sub, trigger=Trigger.removal, formula_type=FormulaType.remove)
     op_power      = Token(r"\*\*")

@@ -1021,7 +1021,7 @@ def parse_agent(filename, tokens, log, included_files, directive=None):
                 log.info("missing '.' after this goal", loc=ast_node.loc)
                 raise log.error("expected '.' after initial goal, got '%s'", tok.lexeme, loc=tok.loc, extra_locs=[ast_node.loc])
             agent.goals.append(ast_node)
-        elif tok.lexeme in ["@", "+", "-"]:
+        elif tok.lexeme in ["@", "+", "-", "nuez"]:
             tok, last_plan = parse_plan(tok, tokens, log)
             if tok.lexeme != ".":
                 log.info("missing '.' after this plan", loc=last_plan.loc)
@@ -1314,6 +1314,7 @@ class ConstFoldVisitor(object):
         ast_agent.beliefs = [belief.accept(self) for belief in ast_agent.beliefs]
         ast_agent.goals = [goal.accept(self) for goal in ast_agent.goals]
         ast_agent.plans = [plan.accept(self) for plan in ast_agent.plans]
+        ast_agent.nuez = [nuez.accept(self) for nuez in ast_agent.nueces]
         return ast_agent
 
     def visit_if_then_else(self, ast_if_then_else):

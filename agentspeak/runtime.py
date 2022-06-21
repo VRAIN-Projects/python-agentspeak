@@ -30,7 +30,7 @@ import agentspeak.parser
 import agentspeak.lexer
 import agentspeak.util
 
-from agentspeak import UnaryOp, BinaryOp, AslError, asl_str
+from agentspeak import Trigger, UnaryOp, BinaryOp, AslError, asl_str
 
 
 LOGGER = agentspeak.get_logger(__name__)
@@ -381,10 +381,13 @@ class Agent:
         if goal_type == agentspeak.GoalType.belief:
             if trigger == agentspeak.Trigger.addition:
                 self.add_belief(term, calling_intention.scope)
-            else:
-                found = self.remove_belief(term, calling_intention)
-                if not found:
-                    return True
+            else :
+                if trigger == agentspeak.Trigger.nuez:
+                    print("Tengo una nuez")
+                else:
+                    found = self.remove_belief(term, calling_intention)
+                    if not found:
+                        return True
 
         # Freeze with caller scope.
         frozen = agentspeak.freeze(term, calling_intention.scope, {})
@@ -604,6 +607,12 @@ class Environment:
             term = ast_goal.atom.accept(BuildTermVisitor({}))
             agent.call(agentspeak.Trigger.addition, agentspeak.GoalType.achievement,
                        term, Intention(), delayed=True)
+
+        # Nuez
+        for ast_belief in ast_agent.beliefs:
+            belief = ast_belief.accept(BuildTermVisitor({}))
+            agent.call(agentspeak.Trigger.addition, agentspeak.GoalType.belief,
+                       belief, Intention(), delayed=True)
 
         # Report errors.
         log.throw()
