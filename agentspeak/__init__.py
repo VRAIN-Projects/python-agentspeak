@@ -209,7 +209,6 @@ class Log(object):
 class Trigger(enum.Enum):
     addition = "+"
     removal  = "-"
-    nuez = "nuez"
 
 
 @enum.unique
@@ -217,7 +216,7 @@ class GoalType(enum.Enum):
     achievement = "!"
     test        = "?"
     belief      = ""
-    almendra    = "almendra"
+
 
 @enum.unique
 class FormulaType(enum.Enum):
@@ -228,8 +227,6 @@ class FormulaType(enum.Enum):
     add           = "+"
     remove        = "-"
     replace       = "-+"
-    almendra      = "almendra"
-    nuez          = "nuez"
 
 
 class Operator(object):

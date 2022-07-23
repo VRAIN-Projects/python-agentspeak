@@ -129,7 +129,6 @@ class CallbackVisitor(object):
         ast_agent.beliefs = self._cb_map(ast_agent.beliefs)
         ast_agent.goals = self._cb_map(ast_agent.goals)
         ast_agent.plans = self._cb_map(ast_agent.plans)
-        ast_agent.nuez = self._cb_map(ast_agent.nuez)
         return self.callback.on_ast_node(AstType.AGENT, ast_agent)
 
     def visit_if_then_else(self, ast_if_then_else):
@@ -245,7 +244,6 @@ class CallbackReverseVisitor(CallbackVisitor):
         ast_agent.goals = self._cb_map(ast_agent.goals)
         ast_agent.beliefs = self._cb_map(ast_agent.beliefs)
         ast_agent.rules = self._cb_map(ast_agent.rules)
-        ast_agent.nuez = self._cb_map(ast_agent.nuez)
         return self.callback.on_ast_node(AstType.AGENT, ast_agent)
 
     def visit_if_then_else(self, ast_if_then_else):
