@@ -452,9 +452,21 @@ class Agent:
             These attributes belong to unachieve performative
         """
         if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.removal:
-            # JFERRUS 2022-09-05: Pop does not fit exactly, we have to search the intention from the deque
-            self.intentions.pop()  
+        # Remove a intention passed by the parameters.
+            for intention_stack in self.intentions:
+                if not intention_stack:
+                    continue
+                intention = intention_stack[0]
+                if intention.head_term == term:
+                    intention_stack.remove(intention)
+                    return True
 
+            return True
+
+        if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.removal:
+            raise AslError("no applicable plan for %s%s%s/%d" % (
+                trigger.value, goal_type.value, frozen.functor, len(frozen.args)))
+    
         return True
 
     def add_belief(self, term, scope):
@@ -516,6 +528,10 @@ class Agent:
             self.intentions.popleft()
 
         for intention_stack in self.intentions:
+            # Check if the intention has no length
+            if not intention_stack:
+                continue
+
             intention = intention_stack[-1]
 
             # Suspended / waiting.
@@ -528,7 +544,11 @@ class Agent:
             break
         else:
             return False
-
+        
+        # Ignore if the intentiosn stack is empty
+        if not intention_stack:
+            return False
+        
         instr = intention.instr
 
         if not instr:
