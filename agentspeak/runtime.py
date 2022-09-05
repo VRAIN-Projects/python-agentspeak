@@ -408,34 +408,52 @@ class Agent:
             if agentspeak.unifies_annotated(event.head, frozen):
                 intention.waiter = None
 
-        applicable_plans = self.plans[(trigger, goal_type, frozen.functor, len(frozen.args))]
-        choicepoint = object()
-        intention = Intention()
+        """ 
+            JFERRUS 2022-09-05: Init of default functionality for achievement isolated with a "if"
+            The attributes achievement and addition are set in the function _send from stdlib.py.
+            These attributes belong to achieve performative
+        """
+        if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.addition:
 
-        # Find matching plan.
-        for plan in applicable_plans:
-            for _ in agentspeak.unify_annotated(plan.head, frozen, intention.scope, intention.stack):
-                for _ in plan.context.execute(self, intention):
-                    intention.head_term = frozen
-                    intention.instr = plan.body
-                    intention.calling_term = term
+            applicable_plans = self.plans[(trigger, goal_type, frozen.functor, len(frozen.args))]
+            choicepoint = object()
+            intention = Intention()
 
-                    if not delayed and self.intentions:
-                        for intention_stack in self.intentions:
-                            if intention_stack[-1] == calling_intention:
-                                intention_stack.append(intention)
-                                return True
+            # Find matching plan.
+            for plan in applicable_plans:
+                for _ in agentspeak.unify_annotated(plan.head, frozen, intention.scope, intention.stack):
+                    for _ in plan.context.execute(self, intention):
+                        intention.head_term = frozen
+                        intention.instr = plan.body
+                        intention.calling_term = term
 
-                    new_intention_stack = collections.deque()
-                    new_intention_stack.append(intention)
-                    self.intentions.append(new_intention_stack)
-                    return True
+                        if not delayed and self.intentions:
+                            for intention_stack in self.intentions:
+                                if intention_stack[-1] == calling_intention:
+                                    intention_stack.append(intention)
+                                    return True
 
-        if goal_type == agentspeak.GoalType.achievement:
+                        new_intention_stack = collections.deque()
+                        new_intention_stack.append(intention)
+                        self.intentions.append(new_intention_stack)
+                        return True
+
+        if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.addition:
             raise AslError("no applicable plan for %s%s%s/%d" % (
                 trigger.value, goal_type.value, frozen.functor, len(frozen.args)))
         elif goal_type == agentspeak.GoalType.test:
             return self.test_belief(term, calling_intention)
+
+#JFERRUS 2022-09-05: End default code for achieve
+
+        """ 
+            JFERRUS 2022-09-05: Addition of a new performative
+            The attributes achievement and removal are set in the function _send from stdlib.py.
+            These attributes belong to unachieve performative
+        """
+        if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.removal:
+            # JFERRUS 2022-09-05: Pop does not fit exactly, we have to search the intention from the deque
+            self.intentions.pop()  
 
         return True
 

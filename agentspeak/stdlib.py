@@ -121,6 +121,10 @@ def _send(agent, term, intention):
     elif ilf.functor == "achieve":
         goal_type = agentspeak.GoalType.achievement
         trigger = agentspeak.Trigger.addition
+    # JFERRUS 2022-09-05: Addition unachieve performative for being parsed   
+    elif ilf.functor == "unachieve":
+        goal_type = agentspeak.GoalType.achievement
+        trigger = agentspeak.Trigger.removal
     else:
         raise agentspeak.AslError("unknown illocutionary force: %s" % ilf)
 
