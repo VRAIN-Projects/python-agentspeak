@@ -462,7 +462,7 @@ class Agent:
                     intention_stack.remove(intention)
                     return True
 
-                # It is a while. If the term is a var type check the intentions that match with the number of args
+                # If the term is a var type check the intentions that match with the number of args
                 
                 match_all = True
 
@@ -472,6 +472,9 @@ class Agent:
                             if not isinstance(arg, agentspeak.Var):
                                 match_all = False
                                 break
+                    else :
+                        match_all = False
+                        break
                             
                     if match_all:
                         intention_stack.remove(intention)
