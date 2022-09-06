@@ -456,16 +456,26 @@ class Agent:
             for intention_stack in self.intentions:
                 if not intention_stack:
                     continue
-                intention = intention_stack[0]
+                intention = intention_stack[-1]
+
                 if intention.head_term == term:
                     intention_stack.remove(intention)
                     return True
 
-            return True
+                # It is a while. If the term is a var type check the intentions that match with the number of args
+                
+                match_all = True
 
-        if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.removal:
-            raise AslError("no applicable plan for %s%s%s/%d" % (
-                trigger.value, goal_type.value, frozen.functor, len(frozen.args)))
+                if intention.head_term.functor == term.functor:
+                    if len(intention.head_term.args) == len(term.args):
+                        for j, arg in enumerate(term.args):
+                            if not isinstance(arg, agentspeak.Var):
+                                match_all = False
+                                break
+                            
+                    if match_all:
+                        intention_stack.remove(intention)
+                        continue
     
         return True
 
