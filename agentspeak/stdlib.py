@@ -90,7 +90,7 @@ def _broadcast(agent, term, intention):
         if receiver == agent:
             continue
 
-        receiver.call(trigger, goal_type, tagged_message, agentspeak.runtime.Intention(), None)
+        receiver.call(trigger, goal_type, tagged_message, agentspeak.runtime.Intention())
 
     yield
 
@@ -125,10 +125,6 @@ def _send(agent, term, intention):
     elif ilf.functor == "unachieve":
         goal_type = agentspeak.GoalType.achievement
         trigger = agentspeak.Trigger.removal
-    # JFERRUS 2022-09-07: Addition askOne performative for being parsed
-    elif ilf.functor == "askOne":
-        goal_type = agentspeak.GoalType.belief
-        trigger = agentspeak.Trigger.change
     else:
         raise agentspeak.AslError("unknown illocutionary force: %s" % ilf)
 
@@ -141,7 +137,7 @@ def _send(agent, term, intention):
 
     # Broadcast.
     for receiver in receiving_agents:
-        receiver.call(trigger, goal_type, tagged_message, agentspeak.runtime.Intention(), agent)
+        receiver.call(trigger, goal_type, tagged_message, agentspeak.runtime.Intention())
 
     yield
 

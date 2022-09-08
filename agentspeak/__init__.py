@@ -209,8 +209,6 @@ class Log(object):
 class Trigger(enum.Enum):
     addition = "+"
     removal  = "-"
-    #JFERRUS 2022-09-07: Added support for the new trigger type
-    change   = "~"
 
 
 @enum.unique

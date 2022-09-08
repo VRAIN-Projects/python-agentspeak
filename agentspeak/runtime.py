@@ -376,19 +376,15 @@ class Agent:
     def add_plan(self, plan):
         self.plans[(plan.trigger, plan.goal_type, plan.head.functor, len(plan.head.args))].append(plan)
 
-    def call(self, trigger, goal_type, term, calling_intention, sender, delayed=False):
+    def call(self, trigger, goal_type, term, calling_intention, delayed=False):
         # Modify beliefs.
         if goal_type == agentspeak.GoalType.belief:
             if trigger == agentspeak.Trigger.addition:
                 self.add_belief(term, calling_intention.scope)
-            elif trigger == agentspeak.Trigger.removal: 
+            else:
                 found = self.remove_belief(term, calling_intention)
                 if not found:
                     return True
-            elif trigger == agentspeak.Trigger.change:
-                self.add_belief_to_agent(term, calling_intention, sender)
-            else:
-                return False            
 
         # Freeze with caller scope.
         frozen = agentspeak.freeze(term, calling_intention.scope, {})
@@ -493,26 +489,6 @@ class Agent:
             raise AslError("expected belief literal")
 
         self.beliefs[(term.functor, len(term.args))].add(term)
-
-    # JFERRUS 2022-09-07: Add believe to selected agent
-
-        # Self belief car(X)
-        # And Sender belief car(red)
-        # Then Self belief X = red (X is a var)
-        # Then Self belief car(red)
-    def add_belief_to_agent(self, term, scope, sender):
-        # term = term.grounded(scope)
-
-        if term.functor is None:
-            raise AslError("expected belief literal")
-
-        # get the belief of self agent that match with the sender belief
-        belief = self.beliefs[(term.functor, len(term.args))]
-
-        term.args = belief.pop().args
-
-        sender.beliefs[(term.functor, len(term.args))].pop()
-        sender.beliefs[(term.functor, len(term.args))].add(term)
 
     def test_belief(self, term, intention):
         term = agentspeak.evaluate(term, intention.scope)
@@ -672,13 +648,13 @@ class Environment:
         for ast_belief in ast_agent.beliefs:
             belief = ast_belief.accept(BuildTermVisitor({}))
             agent.call(agentspeak.Trigger.addition, agentspeak.GoalType.belief,
-                       belief, Intention(), None,  delayed=True)
+                       belief, Intention(), delayed=True)
 
         # Call initial goals on agent prototype.
         for ast_goal in ast_agent.goals:
             term = ast_goal.atom.accept(BuildTermVisitor({}))
             agent.call(agentspeak.Trigger.addition, agentspeak.GoalType.achievement,
-                       term, Intention(), None, delayed=True)
+                       term, Intention(), delayed=True)
 
         # Report errors.
         log.throw()
@@ -718,7 +694,7 @@ class Environment:
             for ast_goal in ast_agent.goals:
                 term = ast_goal.atom.accept(BuildTermVisitor({}))
                 agent.call(agentspeak.Trigger.addition, agentspeak.GoalType.achievement,
-                           term, Intention(), None, delayed=True)
+                           term, Intention(), delayed=True)
 
             agents.append(agent)
             self.agents[agent.name] = agent
@@ -768,19 +744,19 @@ def add_belief(term, agent, intention):
 
 
 def remove_belief(term, agent, intention):
-    return agent.call(agentspeak.Trigger.removal, agentspeak.GoalType.belief, term, intention, None)
+    return agent.call(agentspeak.Trigger.removal, agentspeak.GoalType.belief, term, intention)
 
 
 def test_belief(term, agent, intention):
-    return agent.call(agentspeak.Trigger.addition, agentspeak.GoalType.test, term, intention, None)
+    return agent.call(agentspeak.Trigger.addition, agentspeak.GoalType.test, term, intention)
 
 
 def call(trigger, goal_type, term, agent, intention):
-    return agent.call(trigger, goal_type, term, intention, None, delayed=False)
+    return agent.call(trigger, goal_type, term, intention, delayed=False)
 
 
 def call_delayed(trigger, goal_type, term, agent, intention):
-    return agent.call(trigger, goal_type, term, intention, None, delayed=True)
+    return agent.call(trigger, goal_type, term, intention, delayed=True)
 
 
 def push_query(query, agent, intention):
