@@ -470,6 +470,9 @@ class Agent:
                 # If is the same function, remove the intention
                 if intention.head_term.functor == term.functor:
                     if len(intention.head_term.args) == len(term.args):
+
+                        has_variables = False
+
                         # Checks if term.args has variables
                         for arg in term.args:
                             if isinstance(arg, agentspeak.Var):
