@@ -377,6 +377,12 @@ class Agent:
         self.plans[(plan.trigger, plan.goal_type, plan.head.functor, len(plan.head.args))].append(plan)
 
     def call(self, trigger, goal_type, term, calling_intention, delayed=False):
+        """ Code for testing
+        for intention_stack in self.intentions:
+            for j, intention in enumerate(intention_stack):
+                if(goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.removal):
+                    print("=====inicio=", j,"====>", intention.head_term)
+        """
         # Modify beliefs.
         if goal_type == agentspeak.GoalType.belief:
             if trigger == agentspeak.Trigger.addition:
@@ -454,32 +460,38 @@ class Agent:
         if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.removal:
         # Remove a intention passed by the parameters.
             for intention_stack in self.intentions:
+
                 if not intention_stack:
                     continue
-                intention = intention_stack[-1]
-
-                if intention.head_term == term:
-                    intention_stack.remove(intention)
-                    return True
-
-                # If the term is a var type check the intentions that match with the number of args
                 
-                match_all = True
-
+                # I don't why in my examples intention stack has only one element
+                intention = intention_stack[-1]
+                
+                # If is the same function, remove the intention
                 if intention.head_term.functor == term.functor:
                     if len(intention.head_term.args) == len(term.args):
-                        for j, arg in enumerate(term.args):
-                            if not isinstance(arg, agentspeak.Var):
-                                match_all = False
+                        # Checks if term.args has variables
+                        for arg in term.args:
+                            if isinstance(arg, agentspeak.Var):
+                                has_variables = True
                                 break
-                    else :
-                        match_all = False
-                        break
-                            
-                    if match_all:
-                        intention_stack.remove(intention)
-                        continue
-    
+
+                        
+                        # Do the action if the term has not variables
+                        if(not has_variables): 
+                            intention_stack.remove(intention)
+                        else :
+                            # Checks if all the args of the term are variables
+                            for arg in term.args:
+                                if not isinstance(arg, agentspeak.Var):
+                                    match_all = False
+                                    break
+
+                            if match_all:
+                                intention_stack.remove(intention)
+                            else: 
+                                raise AslError("expected unachieve literal with all variables")
+        
         return True
 
     def add_belief(self, term, scope):
