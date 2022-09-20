@@ -458,7 +458,10 @@ class Agent:
             These attributes belong to unachieve performative
         """
         if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.removal:
-        # Remove a intention passed by the parameters.
+            if not agentspeak.is_literal(term):
+                raise AslError("expected literal term")
+
+            # Remove a intention passed by the parameters.
             for intention_stack in self.intentions:
 
                 if not intention_stack:
@@ -469,33 +472,13 @@ class Agent:
                 
                 # If is the same function, remove the intention
                 if intention.head_term.functor == term.functor:
-                    if len(intention.head_term.args) == len(term.args):
 
-                        has_variables = False
+                    print("=====head_term====>", intention.head_term, "===term=>", term)
 
                         # Checks if term.args has variables
-                        for arg in term.args:
-                            if isinstance(arg, agentspeak.Var):
-                                has_variables = True
-                                break
-
-                        match_all = True
-
-                        # Do the action if the term has not variables
-                        if(not has_variables): 
-                            intention_stack.remove(intention)
-                        else :
-                            # Checks if all the args of the term are variables
-                            for arg in term.args:
-                                if not isinstance(arg, agentspeak.Var):
-                                    match_all = False
-                                    break
-
-                            if match_all:
-                                intention_stack.remove(intention)
-                            else: 
-                                raise AslError("expected unachieve literal with all variables")
-        
+                    if agentspeak.unifies(term.args, intention.head_term.args):
+                        intention_stack.remove(intention)
+                            
         return True
 
     def add_belief(self, term, scope):
