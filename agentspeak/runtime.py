@@ -479,7 +479,8 @@ class Agent:
                                 has_variables = True
                                 break
 
-                        
+                        match_all = True
+
                         # Do the action if the term has not variables
                         if(not has_variables): 
                             intention_stack.remove(intention)
