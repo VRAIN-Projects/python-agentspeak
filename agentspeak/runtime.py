@@ -473,11 +473,35 @@ class Agent:
                 # If is the same function, remove the intention
                 if intention.head_term.functor == term.functor:
 
-                    print("=====head_term====>", intention.head_term, "===term=>", term)
+                    print(
+                        "-----term------>", term,
+                        "=====instr====>", intention.instr, 
+                        "=====head_term====>", intention.head_term, 
+                        "=====calling_term====>", intention.calling_term,
+                        "===scope=>", intention.scope,
+                        "===stack=>", intention.stack,
+                        "===query_stack=>", intention.query_stack,
+                        "===choicepoint_stack=>", intention.choicepoint_stack,
+                        "===waiter=>", intention.waiter)
 
                         # Checks if term.args has variables
                     if agentspeak.unifies(term.args, intention.head_term.args):
                         intention_stack.remove(intention)
+
+        if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.addition_tell_how:
+            
+            for intention_stack in self.intentions:
+
+                if not intention_stack:
+                    continue
+                
+                # I don't why in my examples intention stack has only one element
+                intention = intention_stack[-1]
+                
+                # If is the same function, remove the intention
+                print("-----term------>", term)
+        
+
                             
         return True
 

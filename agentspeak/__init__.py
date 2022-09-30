@@ -209,6 +209,9 @@ class Log(object):
 class Trigger(enum.Enum):
     addition = "+"
     removal  = "-"
+    # JFERRUS 2022-09-29 : Added support for the new trigger type for performatives
+    addition_tell_how = "+?"
+    removal_tell_how = "-?"
 
 
 @enum.unique
