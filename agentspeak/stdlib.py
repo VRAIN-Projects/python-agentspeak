@@ -133,11 +133,16 @@ def _send(agent, term, intention):
         raise agentspeak.AslError("unknown illocutionary force: %s" % ilf)
 
     # TODO: unachieve, askOne, askAll, tellHow, untellHow, askHow
-
+    print("=======term=======", term)
     # Prepare message.
     message = agentspeak.freeze(term.args[2], intention.scope, {})
-    tagged_message = message.with_annotation(
-        agentspeak.Literal("source", (agentspeak.Literal(agent.name), )))
+
+    #The message of tellHow is a string that contains a plan so don't add the source annotation
+    if ilf.functor == "tellHow":
+        tagged_message = term
+    else:
+        tagged_message = message.with_annotation(
+            agentspeak.Literal("source", (agentspeak.Literal(agent.name), )))
 
     # Broadcast.
     for receiver in receiving_agents:

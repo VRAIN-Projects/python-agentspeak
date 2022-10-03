@@ -31,6 +31,7 @@ import agentspeak.lexer
 import agentspeak.util
 
 from agentspeak import UnaryOp, BinaryOp, AslError, asl_str
+from build.lib.agentspeak.lexer import TokenType
 
 
 LOGGER = agentspeak.get_logger(__name__)
@@ -490,18 +491,39 @@ class Agent:
 
         if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.addition_tell_how:
             
-            for intention_stack in self.intentions:
+            str_plan = term.args[2]
 
-                if not intention_stack:
-                    continue
-                
-                # I don't why in my examples intention stack has only one element
-                intention = intention_stack[-1]
-                
-                # If is the same function, remove the intention
-                print("-----term------>", term)
+            print("===plan==>", str_plan)
+            tokens = []
+            tokens.extend(agentspeak.lexer.tokenize(agentspeak.StringSource("<stdin>", str_plan), agentspeak.Log(LOGGER), 1))
+            plan = agentspeak.parser.parse_plan(tokens[0], tokens, agentspeak.Log(LOGGER))
+            self.add_plan(plan)
+            """
+            # Convert string to tokens
+         
+            plus = None
+
+            for token_type in agentspeak.lexer.TokenType:
+                token = token_type.value
+                match = token.re.search(str_plan)
+
+                if match:
+                    print("Ha macheao", match)
+                    tokens.append(match)
+                    plus = token.re.match("+")
+
+                    if plus:
+                        print("Ha macheao", plus)
+                else:
+                    print("No ha macheao,", match)
+
+            # Convert tokens to plan
+            plan = agentspeak.parser.parse_plan(plus, tokens, agentspeak.Log(LOGGER))
+            
+            # Add plan to the agent
+            # self.add_plan(plan)
         
-
+            """
                             
         return True
 
