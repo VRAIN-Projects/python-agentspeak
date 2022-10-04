@@ -489,6 +489,11 @@ class Agent:
                     if agentspeak.unifies(term.args, intention.head_term.args):
                         intention_stack.remove(intention)
         
+        """ 
+            JFERRUS 2022-10-04: Addition of a new performative
+            The attributes achievement and removal are set in the function _send from stdlib.py.
+            These attributes belong to TellHow performative
+        """
         if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.addition_tell_how:
             
             # Gets the string contained in the term with a plan
