@@ -491,90 +491,48 @@ class Agent:
         
         if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.addition_tell_how:
             
+            # Gets the string contained in the term with a plan
             str_plan = term.args[2]
-            
-            print("===plan==>", str_plan)
+
             tokens = []
+            # Converts the string to a list of tokens
             tokens.extend(agentspeak.lexer.tokenize(agentspeak.StringSource("<stdin>", str_plan), agentspeak.Log(LOGGER), 1))
+            
+            # Prepare the conversion from string to tokens
             first_token = tokens[0]
             log = agentspeak.Log(LOGGER)
             tokens.pop(0)
             tokens = iter(tokens)
 
+            # Converts the list of tokens to a Astplan
             if first_token.lexeme in ["@", "+", "-"]:
-                tok, ast_last_plan = agentspeak.parser.parse_plan(first_token, tokens, log)
+                tok, ast_plan = agentspeak.parser.parse_plan(first_token, tokens, log)
                 if tok.lexeme != ".":
                     raise log.error("", tok, "expected end of plan")
                 
-                # Add plan to the agent, converting AstPlan to Plan
-
-                print(ast_last_plan)
-            
-
+            # Prepare the conversión of Astplan to Plan
             variables = {}
             actions = agentspeak.stdlib.actions
 
-            head = ast_last_plan.event.head.accept(BuildTermVisitor(variables))
+            head = ast_plan.event.head.accept(BuildTermVisitor(variables))
 
-            if ast_last_plan.context:
-                context = ast_last_plan.context.accept(BuildQueryVisitor(variables, actions, log))
+            if ast_plan.context:
+                context = ast_plan.context.accept(BuildQueryVisitor(variables, actions, log))
             else:
                 context = TrueQuery()
 
             body = Instruction(noop)
             body.f = noop
-            if ast_last_plan.body:
-                ast_last_plan.body.accept(BuildInstructionsVisitor(variables, actions, body, log))
+            if ast_plan.body:
+                ast_plan.body.accept(BuildInstructionsVisitor(variables, actions, body, log))
 
-            plan = Plan(ast_last_plan.event.trigger, ast_last_plan.event.goal_type, head, context, body)
+            #Converts the Astplan to Plan
+            plan = Plan(ast_plan.event.trigger, ast_plan.event.goal_type, head, context, body)
+
+            # Add the plan to the agent
             self.add_plan(plan)
 
-            """
-            # Terms is equivalent to args in this case but the function add_plan needs args
-            ast_last_plan.event.head.args = ast_last_plan.event.head.terms
-
-            # Add context to the plan, <agentspeak.runtime.TrueQuery
-            ast_last_plan.context = TrueQuery()
-
-            # Convert ast_plan to runtime plan
-            plan = Plan(ast_last_plan.event, ast_last_plan.context, ast_last_plan.body)
-
-            converted_plan = Plan(ast_last_plan.event.trigger, ast_last_plan.event.goal_type, ast_last_plan.event.head, ast_last_plan.context, ast_last_plan.body)
             
-            self.add_plan(converted_plan)
-
-            planes_ver = self.plans
-
-            print("===planes_ver==>", planes_ver)
-            """
-            # plan = agentspeak.parser.parse_plan(tokens[0], tokens, agentspeak.Log(LOGGER))
-            # self.add_plan(plan)
-            """
-            # Convert string to tokens
-         
-            plus = None
-
-            for token_type in agentspeak.lexer.TokenType:
-                token = token_type.value
-                match = token.re.search(str_plan)
-
-                if match:
-                    print("Ha macheao", match)
-                    tokens.append(match)
-                    plus = token.re.match("+")
-
-                    if plus:
-                        print("Ha macheao", plus)
-                else:
-                    print("No ha macheao,", match)
-
-            # Convert tokens to plan
-            plan = agentspeak.parser.parse_plan(plus, tokens, agentspeak.Log(LOGGER))
-            
-            # Add plan to the agent
-            # self.add_plan(plan)
-        
-            """
                             
         return True
 

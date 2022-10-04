@@ -133,7 +133,7 @@ def _send(agent, term, intention):
         raise agentspeak.AslError("unknown illocutionary force: %s" % ilf)
 
     # TODO: unachieve, askOne, askAll, tellHow, untellHow, askHow
-    print("=======term=======", term)
+    # print("=======term=======", term)
     # Prepare message.
     message = agentspeak.freeze(term.args[2], intention.scope, {})
 
