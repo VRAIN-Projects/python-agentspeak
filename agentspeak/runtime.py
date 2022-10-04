@@ -488,11 +488,11 @@ class Agent:
                         # Checks if term.args has variables
                     if agentspeak.unifies(term.args, intention.head_term.args):
                         intention_stack.remove(intention)
-
+        
         if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.addition_tell_how:
             
             str_plan = term.args[2]
-
+            
             print("===plan==>", str_plan)
             tokens = []
             tokens.extend(agentspeak.lexer.tokenize(agentspeak.StringSource("<stdin>", str_plan), agentspeak.Log(LOGGER), 1))
@@ -509,15 +509,44 @@ class Agent:
                 # Add plan to the agent, converting AstPlan to Plan
 
                 print(ast_last_plan)
-                # Terms is equivalent to args in this case but the function add_plan needs args
-                ast_last_plan.event.head.args = ast_last_plan.event.head.terms
-                
-                converted_plan = Plan(ast_last_plan.event.trigger, ast_last_plan.event.goal_type, ast_last_plan.event.head, ast_last_plan.context, ast_last_plan.body)
+            
 
-                self.add_plan(converted_plan)
-                
-                # self.add_plan(last_plan)
+            variables = {}
+            actions = agentspeak.stdlib.actions
 
+            head = ast_last_plan.event.head.accept(BuildTermVisitor(variables))
+
+            if ast_last_plan.context:
+                context = ast_last_plan.context.accept(BuildQueryVisitor(variables, actions, log))
+            else:
+                context = TrueQuery()
+
+            body = Instruction(noop)
+            body.f = noop
+            if ast_last_plan.body:
+                ast_last_plan.body.accept(BuildInstructionsVisitor(variables, actions, body, log))
+
+            plan = Plan(ast_last_plan.event.trigger, ast_last_plan.event.goal_type, head, context, body)
+            self.add_plan(plan)
+
+            """
+            # Terms is equivalent to args in this case but the function add_plan needs args
+            ast_last_plan.event.head.args = ast_last_plan.event.head.terms
+
+            # Add context to the plan, <agentspeak.runtime.TrueQuery
+            ast_last_plan.context = TrueQuery()
+
+            # Convert ast_plan to runtime plan
+            plan = Plan(ast_last_plan.event, ast_last_plan.context, ast_last_plan.body)
+
+            converted_plan = Plan(ast_last_plan.event.trigger, ast_last_plan.event.goal_type, ast_last_plan.event.head, ast_last_plan.context, ast_last_plan.body)
+            
+            self.add_plan(converted_plan)
+
+            planes_ver = self.plans
+
+            print("===planes_ver==>", planes_ver)
+            """
             # plan = agentspeak.parser.parse_plan(tokens[0], tokens, agentspeak.Log(LOGGER))
             # self.add_plan(plan)
             """
