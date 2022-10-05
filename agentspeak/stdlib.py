@@ -125,10 +125,14 @@ def _send(agent, term, intention):
     elif ilf.functor == "unachieve":
         goal_type = agentspeak.GoalType.achievement
         trigger = agentspeak.Trigger.removal
-    # JFERRUS 2022-09-05: Addition tellHow performative for being parsed   
+    # JFERRUS 2022-10-04: Addition tellHow performative for being parsed   
     elif ilf.functor == "tellHow":
         goal_type = agentspeak.GoalType.achievement
         trigger = agentspeak.Trigger.addition_tell_how
+    # JFERRUS 2022-10-05: Addition tellHow performative for being parsed   
+    elif ilf.functor == "untellHow":
+        goal_type = agentspeak.GoalType.achievement
+        trigger = agentspeak.Trigger.removal_tell_how
     else:
         raise agentspeak.AslError("unknown illocutionary force: %s" % ilf)
 
@@ -137,7 +141,7 @@ def _send(agent, term, intention):
     message = agentspeak.freeze(term.args[2], intention.scope, {})
 
     #The message of tellHow is a string that contains a plan, is not a Literal then we don't add the source annotation
-    if ilf.functor == "tellHow":
+    if ilf.functor == "tellHow" or ilf.functor == "untellHow":
         tagged_message = term
     else:
         tagged_message = message.with_annotation(
