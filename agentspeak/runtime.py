@@ -378,12 +378,6 @@ class Agent:
         self.plans[(plan.trigger, plan.goal_type, plan.head.functor, len(plan.head.args))].append(plan)
 
     def call(self, trigger, goal_type, term, calling_intention, delayed=False):
-        """ Code for testing
-        for intention_stack in self.intentions:
-            for j, intention in enumerate(intention_stack):
-                if(goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.removal):
-                    print("=====inicio=", j,"====>", intention.head_term)
-        """
         # Modify beliefs.
         if goal_type == agentspeak.GoalType.belief:
             if trigger == agentspeak.Trigger.addition:
@@ -416,7 +410,7 @@ class Agent:
                 intention.waiter = None
 
         """ 
-            JFERRUS 2022-09-05: Init of default functionality for achievement isolated with a "if"
+            JFERRUS 2022-09-05: Init of default functionality for achievement isolated with a "if" statement
             The attributes achievement and addition are set in the function _send from stdlib.py.
             These attributes belong to achieve performative
         """
@@ -464,7 +458,6 @@ class Agent:
 
             # Remove a intention passed by the parameters.
             for intention_stack in self.intentions:
-
                 if not intention_stack:
                     continue
                 
@@ -473,19 +466,7 @@ class Agent:
                 
                 # If is the same function, remove the intention
                 if intention.head_term.functor == term.functor:
-
-                    print(
-                        "-----term------>", term,
-                        "=====instr====>", intention.instr, 
-                        "=====head_term====>", intention.head_term, 
-                        "=====calling_term====>", intention.calling_term,
-                        "===scope=>", intention.scope,
-                        "===stack=>", intention.stack,
-                        "===query_stack=>", intention.query_stack,
-                        "===choicepoint_stack=>", intention.choicepoint_stack,
-                        "===waiter=>", intention.waiter)
-
-                        # Checks if term.args has variables
+                    # Checks if term.args has variables
                     if agentspeak.unifies(term.args, intention.head_term.args):
                         intention_stack.remove(intention)
         
@@ -536,9 +517,7 @@ class Agent:
 
             # Add the plan to the agent
             self.add_plan(plan)
-
-            
-                            
+                         
         return True
 
     def add_belief(self, term, scope):
