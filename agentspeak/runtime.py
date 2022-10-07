@@ -472,7 +472,7 @@ class Agent:
         
         """ 
             JFERRUS 2022-10-04: Addition of a new performative
-            The attributes achievement and removal are set in the function _send from stdlib.py.
+            The attributes achievement and addition_tell_how are set in the function _send from stdlib.py.
             These attributes belong to TellHow performative
         """
         if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.addition_tell_how:
@@ -484,7 +484,7 @@ class Agent:
             # Converts the string to a list of tokens
             tokens.extend(agentspeak.lexer.tokenize(agentspeak.StringSource("<stdin>", str_plan), agentspeak.Log(LOGGER), 1))
             
-            # Prepare the conversion from string to tokens
+            # Prepare the conversion from tokens to AstPlan
             first_token = tokens[0]
             log = agentspeak.Log(LOGGER)
             tokens.pop(0)
@@ -517,7 +517,52 @@ class Agent:
 
             # Add the plan to the agent
             self.add_plan(plan)
-                         
+        """ 
+            JFERRUS 2022-10-06: Addition of a new performative
+            The attributes achievement and addition_ask_how are set in the function _send from stdlib.py.
+            These attributes belong to AskHow performative
+        """
+        if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.addition_ask_how:
+            planes = self.plans
+            # Gets the string contained in the term with a plan
+            str_plan = term.args[2]
+            tokens = []
+            tokens.extend(agentspeak.lexer.tokenize(agentspeak.StringSource("<stdin>", str_plan), agentspeak.Log(LOGGER), 1))
+
+            first_token = tokens[0]
+            log = agentspeak.Log(LOGGER)
+            tokens.pop(0)
+            tokens = iter(tokens)
+
+            # Converts the list of tokens to a Astplan
+            if first_token.lexeme in ["@", "+", "-"]:
+                tok, ast_plan = agentspeak.parser.parse_plan(first_token, tokens, log)
+                
+            # Gets the values to find the plan
+            variables = {}       
+
+            planes = self.plans
+            print(planes, "\n\n-----------------------------------\n\n")
+            # Finds the aplicable plans
+            aplicable_plans = self.plans.get(
+                (ast_plan.event.trigger, ast_plan.event.goal_type, ast_plan.event.head.functor, len(ast_plan.event.head.terms)), 
+             )
+             #   collections.defaultdict(lambda: [])
+            planes = self.plans
+
+
+            print(aplicable_plans, "\n\n-----------------------------------\n\n")
+
+            # Get the asker agent
+            asker = self.env.agents["sender"]
+            # Checks if there are aplicable plans that match with the ast_plan
+            if aplicable_plans:
+                # Sends all the applicable plans to the sender of the performative with
+                for plan in aplicable_plans:
+                    # get the lines of the plan
+                    
+                    call(agentspeak.Trigger.addition_tell_how, agentspeak.GoalType.achievement, literal_plan, asker, agentspeak.runtime.Intention())
+
         return True
 
     def add_belief(self, term, scope):
