@@ -31,7 +31,7 @@ import agentspeak.lexer
 import agentspeak.util
 
 from agentspeak import UnaryOp, BinaryOp, AslError, asl_str
-from build.lib.agentspeak.lexer import TokenType
+#from build.lib.agentspeak.lexer import TokenType
 
 
 LOGGER = agentspeak.get_logger(__name__)

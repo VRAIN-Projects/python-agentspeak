@@ -1027,6 +1027,8 @@ def parse_agent(filename, tokens, log, included_files, directive=None):
                 log.info("missing '.' after this plan", loc=last_plan.loc)
                 raise log.error("expected '.' after plan, got '%s'", tok.lexeme, loc=tok.loc, extra_locs=[last_plan.loc])
             agent.plans.append(last_plan)
+        elif tok.lexeme == "hola":
+            print("Lo hemos encontrado")
         else:
             log.error("unexpected token: '%s'", tok.lexeme, loc=tok.loc)
 

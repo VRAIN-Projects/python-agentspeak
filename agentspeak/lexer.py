@@ -36,11 +36,14 @@ class Token(object):
                  functor=False, numeric=False, variable=False, string=False,
                  boolean=None,
                  trigger=None, goal_type=None, formula_type=None,
-                 unary_op=None, mult_op=None, add_op=None, comp_op=None):
+                 unary_op=None, mult_op=None, add_op=None, comp_op=None,
+                 hola=None):
         self.re = re.compile(regex)
 
         self.space = space
         self.comment = comment
+
+        self.hola = hola 
 
         self.functor = functor
         self.numeric = numeric
@@ -64,7 +67,7 @@ TokenInfo = collections.namedtuple("TokenInfo", "lexeme token loc")
 
 class TokenType(enum.Enum):
     __order__ = """
-                space comment
+                space comment hola
                 paren_open paren_close
                 bracket_open bracket_close
                 brace_open brace_close
@@ -82,6 +85,7 @@ class TokenType(enum.Enum):
 
     space         = Token(r"\s+", space=True)
     comment       = Token(r"(//|#).*", comment=True)
+    hola         = Token(r"hola")
 
     paren_open    = Token(r"\(")
     paren_close   = Token(r"\)")
