@@ -1001,6 +1001,8 @@ def parse_agent(filename, tokens, log, included_files, directive=None):
                     return validate(agent, log)
             else:
                 raise log.error("expected 'include', or 'begin' or 'end' after '{', got '%s'", tok.lexeme, loc=tok.loc)
+        elif tok.lexeme == "hola":
+            print("Lo hemos encontrado en 1")
         elif tok.token.functor:
             if last_plan is not None:
                 log.warning("assertion after plan. should this have been part of '%s'?", last_plan.signature(), loc=tok.loc)

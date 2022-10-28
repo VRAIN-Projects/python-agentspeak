@@ -379,6 +379,15 @@ class Agent:
 
     def call(self, trigger, goal_type, term, calling_intention, delayed=False):
         # Modify beliefs.
+        
+        """if goal_type == agentspeak.GoalType.belief:
+            if trigger == agentspeak.Trigger.addition:
+                self.add_belief(term, calling_intention.scope)
+            else:
+                found = self.remove_belief(term, calling_intention)
+                if not found:
+                    return True # Why¿?"""
+
         if goal_type == agentspeak.GoalType.belief:
             if trigger == agentspeak.Trigger.addition:
                 self.add_belief(term, calling_intention.scope)

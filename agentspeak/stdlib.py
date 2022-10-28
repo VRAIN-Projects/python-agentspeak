@@ -109,6 +109,9 @@ def _send(agent, term, intention):
             receiving_agents.append(agent.env.agents[receiver])
 
     # Illocutionary force.
+    """
+    # tell, untell, achieve, unachieve, tellhow, askHow
+    
     ilf = agentspeak.grounded(term.args[1], intention.scope)
     if not agentspeak.is_atom(ilf):
         return
@@ -118,6 +121,29 @@ def _send(agent, term, intention):
     elif ilf.functor == "untell":
         goal_type = agentspeak.GoalType.belief
         trigger = agentspeak.Trigger.removal
+    elif ilf.functor == "achieve":
+        goal_type = agentspeak.GoalType.achievement
+        trigger = agentspeak.Trigger.addition
+    elif ilf.functor == "unachieve":
+        goal_type = agentspeak.GoalType.achievement
+        trigger = agentspeak.Trigger.removal
+    elif ilf.functor == "tellHow":
+        goal_type = agentspeak.GoalType.achievement
+        trigger = agentspeak.Trigger.addition_ask_how
+    elif ilf.functor == "askHow":
+        goal_type = agentspeak.GoalType.achievement
+        trigger = agentspeak.Trigger.addition_ask_how"""
+
+    ilf = agentspeak.grounded(term.args[1], intention.scope)
+    if not agentspeak.is_atom(ilf):
+        return
+    if ilf.functor == "tell":
+        goal_type = agentspeak.GoalType.belief
+        trigger = agentspeak.Trigger.addition
+    elif ilf.functor == "untell":
+        goal_type = agentspeak.GoalType.belief
+        trigger = agentspeak.Trigger.removal
+
     elif ilf.functor == "achieve":
         goal_type = agentspeak.GoalType.achievement
         trigger = agentspeak.Trigger.addition
