@@ -423,6 +423,9 @@ class AstAgent(AstNode):
 
 
 def parse_literal(tok, tokens, log):
+    # work
+    print(tok.lexeme, str(tokens))
+
     if not tok.token.functor:
         raise log.error("expected functor, got '%s'", tok.lexeme, loc=tok.loc)
 
@@ -448,9 +451,11 @@ def parse_literal(tok, tokens, log):
                                 tok.lexeme, loc=tok.loc, extra_locs=[literal.loc])
 
     if tok.lexeme == "[":
+        print("Estamos en un []")
         while True:
             tok = next(tokens)
             tok, term = parse_term(tok, tokens, log)
+            print("term:",term)
             literal.annotations.append(term)
 
             if tok.lexeme == "]":
@@ -905,7 +910,6 @@ def parse_plan(tok, tokens, log):
         tok = next(tokens)
         tok, annotation = parse_literal(tok, tokens, log)
         plan.annotations.append(annotation)
-        print("annotation", annotation)
 
     tok, event = parse_event(tok, tokens, log)
     plan.event = event
@@ -921,7 +925,8 @@ def parse_plan(tok, tokens, log):
 
         tok, plan.body = parse_plan_body(tok, tokens, log)
         plan.body.loc = body_loc
-
+    
+    print("Plan:", str(plan))
     return tok, plan
 
 
@@ -1002,8 +1007,8 @@ def parse_agent(filename, tokens, log, included_files, directive=None):
                     return validate(agent, log)
             else:
                 raise log.error("expected 'include', or 'begin' or 'end' after '{', got '%s'", tok.lexeme, loc=tok.loc)
-        elif tok.lexeme == "hola":
-            print("Lo hemos encontrado en 1")
+        
+
         elif tok.token.functor:
             if last_plan is not None:
                 log.warning("assertion after plan. should this have been part of '%s'?", last_plan.signature(), loc=tok.loc)
@@ -1030,8 +1035,6 @@ def parse_agent(filename, tokens, log, included_files, directive=None):
                 log.info("missing '.' after this plan", loc=last_plan.loc)
                 raise log.error("expected '.' after plan, got '%s'", tok.lexeme, loc=tok.loc, extra_locs=[last_plan.loc])
             agent.plans.append(last_plan)
-        elif tok.lexeme == "hola":
-            print("Lo hemos encontrado")
         else:
             log.error("unexpected token: '%s'", tok.lexeme, loc=tok.loc)
 
@@ -1414,6 +1417,9 @@ def validate(ast_agent, log):
             log.error("plan head is supposed to be unifiable, but contains non-const expression", loc=op.loc, extra_locs=[plan.loc])
 
         for annotation in plan.annotations:
+            #print("Warning",annotation)
+            # work
+            #print(annotation.loc)
             log.warning("plan annotations are ignored as of yet", loc=annotation.loc, extra_locs=[plan.loc])
 
         if plan.event.goal_type != GoalType.belief and plan.event.trigger == Trigger.removal:
