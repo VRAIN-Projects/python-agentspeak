@@ -905,6 +905,7 @@ def parse_plan(tok, tokens, log):
         tok = next(tokens)
         tok, annotation = parse_literal(tok, tokens, log)
         plan.annotations.append(annotation)
+        print("annotation", annotation)
 
     tok, event = parse_event(tok, tokens, log)
     plan.event = event
