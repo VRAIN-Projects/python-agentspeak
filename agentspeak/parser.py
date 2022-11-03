@@ -234,6 +234,7 @@ class AstPlan(AstNode):
     def __init__(self):
         super(AstPlan, self).__init__()
         self.annotations = []
+        self.dicts_annotations = None # If the plan have label, this variable will be a dict with the annotations
         self.event = None
         self.context = None
         self.body = None
@@ -423,8 +424,6 @@ class AstAgent(AstNode):
 
 
 def parse_literal(tok, tokens, log):
-    # work
-    print(tok.lexeme, str(tokens))
 
     if not tok.token.functor:
         raise log.error("expected functor, got '%s'", tok.lexeme, loc=tok.loc)
@@ -440,7 +439,6 @@ def parse_literal(tok, tokens, log):
             tok = next(tokens)
             tok, term = parse_term(tok, tokens, log)
             literal.terms.append(term)
-
             if tok.lexeme == ")":
                 tok = next(tokens)
                 break
@@ -451,11 +449,9 @@ def parse_literal(tok, tokens, log):
                                 tok.lexeme, loc=tok.loc, extra_locs=[literal.loc])
 
     if tok.lexeme == "[":
-        print("Estamos en un []")
         while True:
             tok = next(tokens)
             tok, term = parse_term(tok, tokens, log)
-            print("term:",term)
             literal.annotations.append(term)
 
             if tok.lexeme == "]":
@@ -902,14 +898,33 @@ def parse_event(tok, tokens, log):
     tok, event.head = parse_literal(tok, tokens, log)
     return tok, event
 
+def create_dict_annotation(annotation):
+    """
+    03-11-22
+    This function recieves a label as string and retuns a dictionary with the pred and annotations
+    For instance:
+        imput = "pred[annotation1(value1),annotation2(value2)]"
+        output = {"pred": {"annotation": value1, "annotation2: value2}}
+    """
+    key = annotation.split("[")[0]
+    values = annotation.split("[")[1].split("]")[0].split(",")
+    values = {v.split("(")[0]: int(v.split("(")[1].replace(")","")) if v.split("(")[1].replace(")","").isdigit() else v.split("(")[1].replace(")","") for v in values}
+    #values = {v.split("(")[0]: int(v.split("(")[1].replace(")","")) for v in values}
+
+    return {key: values}
 
 def parse_plan(tok, tokens, log):
     plan = AstPlan()
-
     while tok.lexeme == "@":
         tok = next(tokens)
         tok, annotation = parse_literal(tok, tokens, log)
         plan.annotations.append(annotation)
+        dict_annotations = create_dict_annotation(str(annotation)) # Create a dict with the annotations of the label
+        if plan.dicts_annotations is not None: # If there are more than one label in the plan that we are looking raise an error
+            raise log.error("There are more than one label for one plan")
+        else:
+            plan.dicts_annotations = dict_annotations # Save the dict in the AstPlan
+        
 
     tok, event = parse_event(tok, tokens, log)
     plan.event = event
@@ -927,6 +942,7 @@ def parse_plan(tok, tokens, log):
         plan.body.loc = body_loc
     
     print("Plan:", str(plan))
+    print("The annotations are: ", plan.dicts_annotations)
     return tok, plan
 
 
@@ -1417,9 +1433,7 @@ def validate(ast_agent, log):
             log.error("plan head is supposed to be unifiable, but contains non-const expression", loc=op.loc, extra_locs=[plan.loc])
 
         for annotation in plan.annotations:
-            #print("Warning",annotation)
-            # work
-            #print(annotation.loc)
+            # Warning annotations ignored
             log.warning("plan annotations are ignored as of yet", loc=annotation.loc, extra_locs=[plan.loc])
 
         if plan.event.goal_type != GoalType.belief and plan.event.trigger == Trigger.removal:

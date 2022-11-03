@@ -523,6 +523,19 @@ class Agent:
             These attributes belong to AskHow performative
         """
         if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.addition_ask_how: # if it is an achievement and an addition_ask_how
+            #work, hecho por fuerza bruta
+            print(term.args[0])
+            print(self.env.agents)
+            print(type(self))
+
+            # self.plans[(plan.trigger, plan.goal_type, plan.head.functor, len(plan.head.args))].append(plan)
+            for plan in self.env.agents["agent2"].plans.values():
+                self.env.agents["agent1"].add_plan(plan[0])
+            
+            print(self.env.agents["agent1"].plans)
+
+
+            return True
             planes = self.plans # get the plans
             # Gets the string contained in the term with a plan
             str_plan = term.args[2] # get the string plan
