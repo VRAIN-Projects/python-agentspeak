@@ -1451,7 +1451,6 @@ def parse(filename, tokens, log, included_files=frozenset(), directive=None):
 
 def main(source, hook):
     log = agentspeak.Log(agentspeak.get_logger(__name__), 3)
-
     tokens = agentspeak.lexer.TokenStream(source, log, 1)
     agent = parse(source.name, tokens, log)
 

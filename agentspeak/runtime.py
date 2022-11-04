@@ -377,8 +377,10 @@ class Agent:
     def add_plan(self, plan):
         self.plans[(plan.trigger, plan.goal_type, plan.head.functor, len(plan.head.args))].append(plan)
 
-    def call(self, trigger, goal_type, term, calling_intention, delayed=False):
+    # I add agent parameter, that are the agent that send the performative
+    def call(self, trigger, goal_type, term, calling_intention, agent=None, delayed=False):
         # Modify beliefs.
+        
         if goal_type == agentspeak.GoalType.belief: # if it is a belief
             if trigger == agentspeak.Trigger.addition: # if it is an addition
                 self.add_belief(term, calling_intention.scope) # add the belief
@@ -476,10 +478,11 @@ class Agent:
             These attributes belong to TellHow performative
         """
         if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.addition_tell_how: # if it is an achievement and an addition_tell_how
-            
             # Gets the string contained in the term with a plan
+            print(trigger, goal_type, term, calling_intention)
             str_plan = term.args[2] # get the string plan
-
+            #str_plan = str_plan.replace("'",'"')
+            
             tokens = [] # create a list of tokens
             # Converts the string to a list of tokens
             tokens.extend(agentspeak.lexer.tokenize(agentspeak.StringSource("<stdin>", str_plan), agentspeak.Log(LOGGER), 1)) # extend the tokens with the tokens of the string plan
@@ -523,16 +526,38 @@ class Agent:
             These attributes belong to AskHow performative
         """
         if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.addition_ask_how: # if it is an achievement and an addition_ask_how
-            #work, hecho por fuerza bruta
+            """
+            04-11-2022
+            We look in the plan.list of the slave agent the plan that master want
+            if we find it we add  to the plan.list of master the plan
+
+            self.env.agents[str(term.args[0])] : slave agent
+            self.env.agents[agent.name] : master agent
+            """
+            print(trigger, goal_type, term, calling_intention)
+            print(type(self))
+            print(self.name)
+        
+
             print(term.args[0])
+            print(term.args[2].split("!")[1])
+
             print(self.env.agents)
             print(type(self))
 
-            # self.plans[(plan.trigger, plan.goal_type, plan.head.functor, len(plan.head.args))].append(plan)
-            for plan in self.env.agents["agent2"].plans.values():
-                self.env.agents["agent1"].add_plan(plan[0])
+            print("askhow",agent.name)
+
+            for plan in self.env.agents[str(term.args[0])].plans.values():
+                """if ((str(term.args[2].split("!")[1]) == str(plan[0].head) and plan[0].trigger == agentspeak.Trigger.removal and str(term.args[2].split("!")[0]) == "-")):
+                    print("Entra1")
+                    print(str(term.args[2].split("!")[1]) == str(plan[0].head))
+                    print(plan[0].trigger == agentspeak.Trigger.removal)
+                    print(str(term.args[2].split("!")[0]) == "-")
+                    self.env.agents[agent.name].add_plan(plan[0])"""
+                if ((str(term.args[2].split("!")[1]) == str(plan[0].head) and plan[0].trigger == agentspeak.Trigger.addition and str(term.args[2].split("!")[0]) == "+")):
+                   self.env.agents[agent.name].add_plan(plan[0])
             
-            print(self.env.agents["agent1"].plans)
+            print(self.env.agents[agent.name].plans)
 
 
             return True
@@ -849,7 +874,8 @@ def test_belief(term, agent, intention):
 
 
 def call(trigger, goal_type, term, agent, intention):
-    return agent.call(trigger, goal_type, term, intention, delayed=False)
+    # work, changing
+    return agent.call(trigger, goal_type, term, intention, agent, delayed=False)
 
 
 def call_delayed(trigger, goal_type, term, agent, intention):
