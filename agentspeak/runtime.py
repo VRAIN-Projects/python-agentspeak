@@ -295,12 +295,13 @@ class Rule:
 
 
 class Plan:
-    def __init__(self, trigger, goal_type, head, context, body):
+    def __init__(self, trigger, goal_type, head, context, body, str_body):
         self.trigger = trigger
         self.goal_type = goal_type
         self.head = head
         self.context = context
         self.body = body
+        self.str_body = str_body
 
     def name(self):
         return "%s%s%s" % (self.trigger.value, self.goal_type.value, self.head)
@@ -479,8 +480,9 @@ class Agent:
         """
         if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.addition_tell_how: # if it is an achievement and an addition_tell_how
             # Gets the string contained in the term with a plan
-            print(trigger, goal_type, term, calling_intention)
+            print("Estamos",trigger, goal_type, term, calling_intention)
             str_plan = term.args[2] # get the string plan
+            print(str_plan)
             #str_plan = str_plan.replace("'",'"')
             
             tokens = [] # create a list of tokens
@@ -534,6 +536,42 @@ class Agent:
             self.env.agents[str(term.args[0])] : slave agent
             self.env.agents[agent.name] : master agent
             """
+            #print(term.args[0])
+            #print(type(term.args[0]))
+
+            plans = self.env.agents[str(term.args[0])].plans.values()
+            for plan in plans:
+                if plan[0].name() == term.args[2]:
+                    strplan = plan2str(plan[0])
+            if strplan:
+                print(calling_intention)
+                print(type(term))
+
+                intention = agentspeak.runtime.Intention()
+                receivers = agentspeak.grounded(agent.name, intention)
+                if not agentspeak.is_list(receivers):
+                    receivers = [receivers]
+                receiving_agents = []
+                for receiver in receivers:
+                    if agentspeak.is_atom(receiver):
+                        receiving_agents.append(agent.env.agents[receiver.functor])
+                    else:
+                        receiving_agents.append(agent.env.agents[receiver])
+                
+                # Modifying term. its better create one new
+                agent = str(term.args[0])
+                term.args = (agent, "tellHow", strplan)
+                
+                print(term)
+                for receiver in receiving_agents:
+                    # work, agent added
+                    return receiver.call(agentspeak.Trigger.addition_tell_how, agentspeak.GoalType.achievement, term, intention, agent)
+
+            else:
+                raise log.warning(f"The agent not know the plan {term.args[2]}")
+
+            
+            return True
             print(trigger, goal_type, term, calling_intention)
             print(type(self))
             print(self.name)
@@ -548,12 +586,8 @@ class Agent:
             print("askhow",agent.name)
 
             for plan in self.env.agents[str(term.args[0])].plans.values():
-                """if ((str(term.args[2].split("!")[1]) == str(plan[0].head) and plan[0].trigger == agentspeak.Trigger.removal and str(term.args[2].split("!")[0]) == "-")):
-                    print("Entra1")
-                    print(str(term.args[2].split("!")[1]) == str(plan[0].head))
-                    print(plan[0].trigger == agentspeak.Trigger.removal)
-                    print(str(term.args[2].split("!")[0]) == "-")
-                    self.env.agents[agent.name].add_plan(plan[0])"""
+                if ((str(term.args[2].split("!")[1]) == str(plan[0].head) and plan[0].trigger == agentspeak.Trigger.removal and str(term.args[2].split("!")[0]) == "-")):
+                    self.env.agents[agent.name].add_plan(plan[0])
                 if ((str(term.args[2].split("!")[1]) == str(plan[0].head) and plan[0].trigger == agentspeak.Trigger.addition and str(term.args[2].split("!")[0]) == "+")):
                    self.env.agents[agent.name].add_plan(plan[0])
             
@@ -603,6 +637,7 @@ class Agent:
                     call(agentspeak.Trigger.addition_tell_how, agentspeak.GoalType.achievement, literal_plan, asker, agentspeak.runtime.Intention()) # send the tell_how performative
 
         return True # return true
+
 
     def add_belief(self, term, scope):
         term = term.grounded(scope)
@@ -719,6 +754,24 @@ class Agent:
             pass
 
 
+def plan2str(plan):
+    #work
+    if isinstance(plan.context, type(TrueQuery())):
+        context = "true"
+    else:
+        context = plan.context
+    return f"{plan.trigger.value}{plan.goal_type.value}{plan.head} : {context} <- {plan.str_body}"
+
+    """
+    self.trigger = trigger
+        self.goal_type = goal_type
+        self.head = head
+        self.context = context
+        self.body = body
+
+    def name(self):
+        return "%s%s%s" % (self.trigger.value, self.goal_type.value, self.head)"""
+
 class Environment:
     def __init__(self):
         self.agents = {}
@@ -763,7 +816,7 @@ class Environment:
             if ast_plan.body:
                 ast_plan.body.accept(BuildInstructionsVisitor(variables, actions, body, log))
 
-            plan = Plan(ast_plan.event.trigger, ast_plan.event.goal_type, head, context, body)
+            plan = Plan(ast_plan.event.trigger, ast_plan.event.goal_type, head, context, body, ast_plan.body)
             agent.add_plan(plan)
 
         # Add beliefs to agent prototype.
