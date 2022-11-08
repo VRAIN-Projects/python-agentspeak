@@ -480,15 +480,15 @@ class Agent:
         """
         if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.addition_tell_how: # if it is an achievement and an addition_tell_how
             # Gets the string contained in the term with a plan
-            print("Estamos",trigger, goal_type, term, calling_intention)
+
             str_plan = term.args[2] # get the string plan
-            print(str_plan)
+
             #str_plan = str_plan.replace("'",'"')
             
             tokens = [] # create a list of tokens
             # Converts the string to a list of tokens
             tokens.extend(agentspeak.lexer.tokenize(agentspeak.StringSource("<stdin>", str_plan), agentspeak.Log(LOGGER), 1)) # extend the tokens with the tokens of the string plan
-            
+
             # Prepare the conversion from tokens to AstPlan
             first_token = tokens[0] # get the first token
             log = agentspeak.Log(LOGGER) # create a log
@@ -496,15 +496,18 @@ class Agent:
             tokens = iter(tokens) # create an iterator of tokens
 
             # Converts the list of tokens to a Astplan
+
             if first_token.lexeme in ["@", "+", "-"]: # if the first token lexeme is in the list ["@", "+", "-"]
+
                 tok, ast_plan = agentspeak.parser.parse_plan(first_token, tokens, log) # parse the plan
+
                 if tok.lexeme != ".": # if the token lexeme is not "."
                     raise log.error("", tok, "expected end of plan") # raise an error
-                
+            
             # Prepare the conversión of Astplan to Plan
             variables = {} # create a dictionary of variables
             actions = agentspeak.stdlib.actions # get the actions
-
+    
             head = ast_plan.event.head.accept(BuildTermVisitor(variables)) # get the head
 
             if ast_plan.context: # if there is a context
@@ -516,9 +519,9 @@ class Agent:
             body.f = noop # set the body function to noop
             if ast_plan.body: # if there is a body
                 ast_plan.body.accept(BuildInstructionsVisitor(variables, actions, body, log)) # build the instructions
-
+     
             #Converts the Astplan to Plan
-            plan = Plan(ast_plan.event.trigger, ast_plan.event.goal_type, head, context, body) # create a plan
+            plan = Plan(ast_plan.event.trigger, ast_plan.event.goal_type, head, context, body,ast_plan.body) # create a plan
 
             # Add the plan to the agent
             self.add_plan(plan) # add the plan
@@ -540,12 +543,12 @@ class Agent:
             #print(type(term.args[0]))
 
             plans = self.env.agents[str(term.args[0])].plans.values()
+            strplans = []
             for plan in plans:
                 if plan[0].name() == term.args[2]:
                     strplan = plan2str(plan[0])
-            if strplan:
-                print(calling_intention)
-                print(type(term))
+                    strplans.append(strplan)
+            if strplans:
 
                 intention = agentspeak.runtime.Intention()
                 receivers = agentspeak.grounded(agent.name, intention)
@@ -559,8 +562,9 @@ class Agent:
                         receiving_agents.append(agent.env.agents[receiver])
                 
                 # Modifying term. its better create one new
+                save_agent = agent.name
                 agent = str(term.args[0])
-                term.args = (agent, "tellHow", strplan)
+                term.args = (save_agent, "tellHow", strplan)
                 
                 print(term)
                 for receiver in receiving_agents:
@@ -760,7 +764,7 @@ def plan2str(plan):
         context = "true"
     else:
         context = plan.context
-    return f"{plan.trigger.value}{plan.goal_type.value}{plan.head} : {context} <- {plan.str_body}"
+    return f"{plan.trigger.value}{plan.goal_type.value}{plan.head} : {context} <- {plan.str_body}."
 
     """
     self.trigger = trigger
