@@ -936,15 +936,10 @@ def parse_plan(tok, tokens, log):
 
     if tok.lexeme == "<-":
         body_loc = tok.loc
-        print(tok.lexeme)
         tok = next(tokens)
-        print(tok.lexeme)
         tok, plan.body = parse_plan_body(tok, tokens, log)
-        print(plan.body)
         plan.body.loc = body_loc
-    
-    print("Plan:", str(plan))
-    print("The annotations are: ", plan.dicts_annotations)
+
     return tok, plan
 
 

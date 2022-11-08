@@ -180,6 +180,10 @@ class ActionQuery:
     def __init__(self, term, impl):
         self.term = term
         self.impl = impl
+        print(self.term)
+        print(self.impl)
+        print(type(self.term))
+        print(type(self.impl))
 
     def execute(self, agent, intention):
         for _ in self.impl(agent, self.term, intention):
@@ -519,12 +523,13 @@ class Agent:
             body.f = noop # set the body function to noop
             if ast_plan.body: # if there is a body
                 ast_plan.body.accept(BuildInstructionsVisitor(variables, actions, body, log)) # build the instructions
-     
+            
             #Converts the Astplan to Plan
             plan = Plan(ast_plan.event.trigger, ast_plan.event.goal_type, head, context, body,ast_plan.body) # create a plan
 
             # Add the plan to the agent
             self.add_plan(plan) # add the plan
+
         """ 
             JFERRUS 2022-10-06: Addition of a new performative
             The attributes achievement and addition_ask_how are set in the function _send from stdlib.py.
@@ -544,10 +549,13 @@ class Agent:
 
             plans = self.env.agents[str(term.args[0])].plans.values()
             strplans = []
+
             for plan in plans:
                 if plan[0].name() == term.args[2]:
-                    strplan = plan2str(plan[0])
-                    strplans.append(strplan)
+                    for differents in plan:
+                        strplan = plan2str(differents)
+                        strplans.append(strplan)
+
             if strplans:
 
                 intention = agentspeak.runtime.Intention()
@@ -564,12 +572,31 @@ class Agent:
                 # Modifying term. its better create one new
                 save_agent = agent.name
                 agent = str(term.args[0])
-                term.args = (save_agent, "tellHow", strplan)
-                
-                print(term)
-                for receiver in receiving_agents:
-                    # work, agent added
-                    return receiver.call(agentspeak.Trigger.addition_tell_how, agentspeak.GoalType.achievement, term, intention, agent)
+
+                for strplan in strplans:
+                    term.args = (save_agent, "tellHow", strplan)
+                    for receiver in receiving_agents:
+                        # work, agent added
+
+                        print(strplan)
+                        
+                        send.replace('"','\"')
+                        print(strplan)
+                        tokens = [] # create a list of tokens
+                        # Converts the string to a list of tokens
+                        tokens.extend(agentspeak.lexer.tokenize(agentspeak.StringSource("<stdin>", strplan), agentspeak.Log(LOGGER), 1)) # extend the tokens with the tokens of the string plan
+
+                        # Prepare the conversion from tokens to AstPlan
+                        tok = tokens[0] # get the first token
+                        log = agentspeak.Log(LOGGER) # create a log
+                        tokens.pop(0) # remove the first token
+                        tokens = iter(tokens) # create an iterator of tokens
+                        tok, lit = agentspeak.parser.parse_plan(tok, tokens, log)
+                        print(lit)
+
+                        send = f'.send({save_agent},tellHow,{lit}'
+                        print(5547654, send)
+                        receiver.call(agentspeak.Trigger.addition_tell_how, agentspeak.GoalType.achievement, term, intention, agent)
 
             else:
                 raise log.warning(f"The agent not know the plan {term.args[2]}")
@@ -764,7 +791,10 @@ def plan2str(plan):
         context = "true"
     else:
         context = plan.context
-    return f"{plan.trigger.value}{plan.goal_type.value}{plan.head} : {context} <- {plan.str_body}."
+    #body = str(plan.str_body).replace('"','\\"')
+    body = plan.str_body
+    print(body)
+    return f"{plan.trigger.value}{plan.goal_type.value}{plan.head} : {context} <- {body}."
 
     """
     self.trigger = trigger
