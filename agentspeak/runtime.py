@@ -530,9 +530,9 @@ class Agent:
         """
         if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.addition_ask_how: # if it is an achievement and an addition_ask_how
             """
-            04-11-2022
-            We look in the plan.list of the slave agent the plan that master want
-            if we find it master agent use tellHow to tell the plan to slave agent
+            09-11-2022
+            We look in the plan.list of the slave agent the plan that master want,
+            if we find it: master agent use tellHow to tell the plan to slave agent
 
             """
             #print(term.args[0])
