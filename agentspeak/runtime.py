@@ -103,7 +103,7 @@ class BuildQueryVisitor:
         try:
             arity = len(ast_literal.terms)
             action_impl = self.actions.lookup(ast_literal.functor, arity)
-            print("visit_literal")
+            
             return ActionQuery(term, action_impl)
         except KeyError:
             if "." in ast_literal.functor:
@@ -181,10 +181,6 @@ class ActionQuery:
     def __init__(self, term, impl):
         self.term = term
         self.impl = impl
-        print(self.term)
-        print(self.impl)
-        print(type(self.term))
-        print(type(self.impl))
 
     def execute(self, agent, intention):
         for _ in self.impl(agent, self.term, intention):
@@ -485,9 +481,8 @@ class Agent:
         """
         if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.addition_tell_how: # if it is an achievement and an addition_tell_how
             # Gets the string contained in the term with a plan
-            print("Estamos",trigger, goal_type, term, calling_intention)
+
             str_plan = term.args[2] # get the string plan
-            print(str_plan)
             #str_plan = str_plan.replace("'",'"')
             
             tokens = [] # create a list of tokens
@@ -521,13 +516,9 @@ class Agent:
             body.f = noop # set the body function to noop
             if ast_plan.body: # if there is a body
                 ast_plan.body.accept(BuildInstructionsVisitor(variables, actions, body, log)) # build the instructions
-<<<<<<< HEAD
             
-=======
-
->>>>>>> parent of 94177a3 (Changes in askhow)
             #Converts the Astplan to Plan
-            plan = Plan(ast_plan.event.trigger, ast_plan.event.goal_type, head, context, body) # create a plan
+            plan = Plan(ast_plan.event.trigger, ast_plan.event.goal_type, head, context, body,ast_plan) # create a plan
 
             # Add the plan to the agent
             self.add_plan(plan) # add the plan
@@ -541,16 +532,13 @@ class Agent:
             """
             04-11-2022
             We look in the plan.list of the slave agent the plan that master want
-            if we find it we add  to the plan.list of master the plan
+            if we find it master agent use tellHow to tell the plan to slave agent
 
-            self.env.agents[str(term.args[0])] : slave agent
-            self.env.agents[agent.name] : master agent
             """
             #print(term.args[0])
             #print(type(term.args[0]))
 
             plans = self.env.agents[str(term.args[0])].plans.values()
-<<<<<<< HEAD
             strplans = []
 
             for plan in plans:
@@ -560,14 +548,6 @@ class Agent:
                         strplans.append(strplan)
 
             if strplans:
-=======
-            for plan in plans:
-                if plan[0].name() == term.args[2]:
-                    strplan = plan2str(plan[0])
-            if strplan:
-                print(calling_intention)
-                print(type(term))
->>>>>>> parent of 94177a3 (Changes in askhow)
 
                 intention = agentspeak.runtime.Intention()
                 receivers = agentspeak.grounded(agent.name, intention)
@@ -582,82 +562,11 @@ class Agent:
                 
                 # Modifying term. its better create one new
                 agent = str(term.args[0])
-<<<<<<< HEAD
-
                 for strplan in strplans:
-                    term.args = (save_agent, "tellHow", strplan)
+                    term.args = (agent, "tellHow", strplan)
                     for receiver in receiving_agents:
                         # work, agent added
-
-                        print(1,strplan)
-                        
-                        #send.replace('"','\"')
-                        print(2,strplan)
-                        tokens = [] # create a list of tokens
-                        # Converts the string to a list of tokens
-                        tokens.extend(agentspeak.lexer.tokenize(agentspeak.StringSource("<stdin>", strplan), agentspeak.Log(LOGGER), 1)) # extend the tokens with the tokens of the string plan
-
-                        # Prepare the conversion from tokens to AstPlan
-                        tok = tokens[0] # get the first token
-                        log = agentspeak.Log(LOGGER) # create a log
-                        tokens.pop(0) # remove the first token
-                        tokens = iter(tokens) # create an iterator of tokens
-                        tok, lit = agentspeak.parser.parse_plan(tok, tokens, log)
-                        print(3,lit)
-
-                        send = f'+!send_tellHow <- .send({save_agent},tellHow,{lit}.'
-                        send = '+!start : true   <- .send(agent1,tellHow, \"+!hello <- .print(\"Hello World\").\")'
-                        print(send)
-
-                        tokens = [] # create a list of tokens
-                        # Converts the string to a list of tokens
-                        tokens.extend(agentspeak.lexer.tokenize(agentspeak.StringSource("<stdin>", send), agentspeak.Log(LOGGER), 3)) # extend the tokens with the tokens of the string plan
-                        print("tokenizador")
-                        # Prepare the conversion from tokens to AstPlan
-                        tok = tokens[0] # get the first token
-                        log = agentspeak.Log(LOGGER) # create a log
-                        tokens.pop(0) # remove the first token
-                        tokens = iter(tokens) # create an iterator of tokens
-                        print("hasta aqui bien")
-                        last_plan = None
-                        while True:
-                            if tok.token.functor:
-                                if last_plan is not None:
-                                    log.warning("assertion after plan. should this have been part of '%s'?", last_plan.signature(), loc=tok.loc)
-                                tok, ast_node = agentspeak.parser.parse_rule_or_belief(tok, tokens, log)
-                                if isinstance(ast_node, agentspeak.parser.AstRule):
-                                    if tok.lexeme != ".":
-                                        log.info("missing '.' after this rule", loc=ast_node.loc)
-                                        raise log.error("expected '.' after rule, got '%s'", tok.lexeme, loc=tok.loc, extra_locs=[ast_node.loc])
-                                    agent.rules.append(ast_node)
-                                else:
-                                    if tok.lexeme != ".":
-                                        log.info("missing '.' after this belief", loc=ast_node.loc)
-                                        raise log.error("expected '.' after belief, got '%s'", tok.lexeme, loc=tok.loc, extra_locs=[ast_node.loc])
-                                    agent.beliefs.append(ast_node)
-
-                            elif tok.lexeme == "!":
-                                tok, ast_node = agentspeak.parser.parse_initial_goal(tok, tokens, log)
-                                if tok.lexeme != ".":
-                                    log.info("missing '.' after this goal", loc=ast_node.loc)
-                                    raise log.error("expected '.' after initial goal, got '%s'", tok.lexeme, loc=tok.loc, extra_locs=[ast_node.loc])
-                                agent.goals.append(ast_node)
-                            elif tok.lexeme in ["@", "+", "-"]:
-                                tok, last_plan = agentspeak.parser.parse_plan(tok, tokens, log)
-                                if tok.lexeme != ".":
-                                    log.info("missing '.' after this plan", loc=last_plan.loc)
-                            else: 
-                                log.error("unexpected token")
-                        print(5547654, send)
-                        #receiver.call(agentspeak.Trigger.addition_tell_how, agentspeak.GoalType.achievement, term, intention, agent)
-=======
-                term.args = (agent, "tellHow", strplan)
-                
-                print(term)
-                for receiver in receiving_agents:
-                    # work, agent added
-                    return receiver.call(agentspeak.Trigger.addition_tell_how, agentspeak.GoalType.achievement, term, intention, agent)
->>>>>>> parent of 94177a3 (Changes in askhow)
+                        receiver.call(agentspeak.Trigger.addition_tell_how, agentspeak.GoalType.achievement, term, intention, agent)
 
             else:
                 raise log.warning(f"The agent not know the plan {term.args[2]}")
@@ -852,14 +761,9 @@ def plan2str(plan):
         context = "true"
     else:
         context = plan.context
-<<<<<<< HEAD
     #body = str(plan.str_body).replace('"','\\"')
     body = plan.str_body
-    print(body)
     return f"{plan.trigger.value}{plan.goal_type.value}{plan.head} : {context} <- {body}."
-=======
-    return f"{plan.trigger.value}{plan.goal_type.value}{plan.head} : {context} <- {plan.str_body}"
->>>>>>> parent of 94177a3 (Changes in askhow)
 
     """
     self.trigger = trigger
