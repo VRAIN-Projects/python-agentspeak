@@ -95,6 +95,9 @@ class AstLiteral(AstNode):
         self.annotations = []
 
     def accept(self, visitor):
+        
+        print("Aqui antes")
+        
         return visitor.visit_literal(self)
 
     def signature(self):
@@ -679,6 +682,7 @@ def parse_rule_or_belief(tok, tokens, log):
     if "." in tok.lexeme:
         log.warning("found '.' in assertion. should this have been an action?", loc=tok.loc)
 
+    print("parse rule of belief")
     tok, belief_atom = parse_literal(tok, tokens, log)
 
     if tok.lexeme == ":-":
@@ -703,6 +707,7 @@ def parse_initial_goal(tok, tokens, log):
     goal.loc = tok.loc
 
     tok = next(tokens)
+    print("parse_initial_goal")
     tok, goal.atom = parse_literal(tok, tokens, log)
     return tok, goal
 
@@ -895,6 +900,7 @@ def parse_event(tok, tokens, log):
     else:
         event.goal_type = GoalType.belief
 
+    print("parse event head")
     tok, event.head = parse_literal(tok, tokens, log)
     return tok, event
 
@@ -937,6 +943,10 @@ def parse_plan(tok, tokens, log):
     if tok.lexeme == "<-":
         body_loc = tok.loc
         tok = next(tokens)
+<<<<<<< HEAD
+=======
+
+>>>>>>> parent of 94177a3 (Changes in askhow)
         tok, plan.body = parse_plan_body(tok, tokens, log)
         plan.body.loc = body_loc
 
