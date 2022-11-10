@@ -538,9 +538,10 @@ class Agent:
             #print(term.args[0])
             #print(type(term.args[0]))
 
-            plans = self.env.agents[str(term.args[0])].plans.values()
+            #plans = self.env.agents[str(term.args[0])].plans.values()
             strplans = []
-
+            
+            plans = self.plans.values()
             for plan in plans:
                 if plan[0].name() == term.args[2]:
                     for differents in plan:
@@ -548,7 +549,6 @@ class Agent:
                         strplans.append(strplan)
 
             if strplans:
-
                 intention = agentspeak.runtime.Intention()
                 receivers = agentspeak.grounded(agent.name, intention)
                 if not agentspeak.is_list(receivers):
@@ -560,7 +560,7 @@ class Agent:
                     else:
                         receiving_agents.append(agent.env.agents[receiver])
                 
-                # Modifying term. its better create one new
+                # Modifying term.args, its better create one new
                 agent = str(term.args[0])
                 for strplan in strplans:
                     term.args = (agent, "tellHow", strplan)
