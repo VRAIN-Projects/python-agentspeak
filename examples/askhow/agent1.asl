@@ -2,6 +2,7 @@ me(100).
 
 !start.
 
+@etiqueta[macarron(45)]
 +!start : true
     <-
         .print("Preguntar Plan");

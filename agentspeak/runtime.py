@@ -380,7 +380,7 @@ class Agent:
         self.plans[(plan.trigger, plan.goal_type, plan.head.functor, len(plan.head.args))].append(plan)
 
     # I add agent parameter, that are the agent that send the performative
-    def call(self, trigger, goal_type, term, calling_intention, agent=None, delayed=False):
+    def call(self, trigger, goal_type, term, calling_intention, delayed=False):
         # Modify beliefs.
         
         if goal_type == agentspeak.GoalType.belief: # if it is a belief
@@ -535,7 +535,8 @@ class Agent:
             if we find it: master agent use tellHow to tell the plan to slave agent
 
             """
-            #print(term.args[0])
+            print("askHow start")
+            print(term.args)
             #print(type(term.args[0]))
 
             #plans = self.env.agents[str(term.args[0])].plans.values()
@@ -573,69 +574,6 @@ class Agent:
 
             
             return True
-            print(trigger, goal_type, term, calling_intention)
-            print(type(self))
-            print(self.name)
-        
-
-            print(term.args[0])
-            print(term.args[2].split("!")[1])
-
-            print(self.env.agents)
-            print(type(self))
-
-            print("askhow",agent.name)
-
-            for plan in self.env.agents[str(term.args[0])].plans.values():
-                if ((str(term.args[2].split("!")[1]) == str(plan[0].head) and plan[0].trigger == agentspeak.Trigger.removal and str(term.args[2].split("!")[0]) == "-")):
-                    self.env.agents[agent.name].add_plan(plan[0])
-                if ((str(term.args[2].split("!")[1]) == str(plan[0].head) and plan[0].trigger == agentspeak.Trigger.addition and str(term.args[2].split("!")[0]) == "+")):
-                   self.env.agents[agent.name].add_plan(plan[0])
-            
-            print(self.env.agents[agent.name].plans)
-
-
-            return True
-            planes = self.plans # get the plans
-            # Gets the string contained in the term with a plan
-            str_plan = term.args[2] # get the string plan
-            tokens = [] # create a list of tokens
-            tokens.extend(agentspeak.lexer.tokenize(agentspeak.StringSource("<stdin>", str_plan), agentspeak.Log(LOGGER), 1)) # extend the tokens with the tokens of the string plan
-
-            first_token = tokens[0] # get the first token
-            log = agentspeak.Log(LOGGER) # create a log
-            tokens.pop(0) # remove the first token
-            tokens = iter(tokens) # create an iterator of tokens
-
-            # Converts the list of tokens to a Astplan
-            if first_token.lexeme in ["@", "+", "-"]: # if the first token lexeme is in the list ["@", "+", "-"]
-                tok, ast_plan = agentspeak.parser.parse_plan(first_token, tokens, log)  # parse the plan
-                
-            # Gets the values to find the plan
-            variables = {} # create a dictionary of variables  
-
-            planes = self.plans # get the plans
-            print(planes, "\n\n-----------------------------------\n\n")
-            # Finds the aplicable plans
-            aplicable_plans = self.plans.get(
-                (ast_plan.event.trigger, ast_plan.event.goal_type, ast_plan.event.head.functor, len(ast_plan.event.head.terms)), 
-             ) # get the aplicable plans with the same trigger, goal_type, head functor and head terms length
-             #   collections.defaultdict(lambda: [])
-            planes = self.plans # get the plans
-
-
-            print(aplicable_plans, "\n\n-----------------------------------\n\n")
-
-            # Get the asker agent
-            # This part is not finished yet. 
-            asker = self.env.agents["sender"] # get the sender agent from the environment
-            # Checks if there are aplicable plans that match with the ast_plan
-            if aplicable_plans: # if there are aplicable plans
-                # Sends all the applicable plans to the sender of the performative with
-                for plan in aplicable_plans: # for each plan
-                    # get the lines of the plan
-                    
-                    call(agentspeak.Trigger.addition_tell_how, agentspeak.GoalType.achievement, literal_plan, asker, agentspeak.runtime.Intention()) # send the tell_how performative
 
         return True # return true
 
@@ -763,6 +701,8 @@ def plan2str(plan):
         context = plan.context
     #body = str(plan.str_body).replace('"','\\"')
     body = plan.str_body
+
+    
     return f"{plan.trigger.value}{plan.goal_type.value}{plan.head} : {context} <- {body}."
 
     """
@@ -819,6 +759,18 @@ class Environment:
             if ast_plan.body:
                 ast_plan.body.accept(BuildInstructionsVisitor(variables, actions, body, log))
 
+            str_body = str(ast_plan.body)
+
+            if "askHow" in str_body:
+                print("Macarrones")
+
+                find_askhow = str_body.find("askHow")
+                find_excl = str_body[find_askhow:].find("!") + find_askhow
+                
+                print(agent.name)
+
+                str_body = f"{str_body[:(find_excl-1)]}@askHow_sender[name(67)] {str_body[(find_excl-1):]}"
+                print(str_body)
             plan = Plan(ast_plan.event.trigger, ast_plan.event.goal_type, head, context, body, ast_plan.body)
             agent.add_plan(plan)
 
