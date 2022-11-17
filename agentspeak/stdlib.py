@@ -168,19 +168,12 @@ def _send(agent, term, intention):
 
     #The message of tellHow is a string that contains a plan, is not a Literal then we don't add the source annotation
     if ilf.functor == "tellHow" or ilf.functor == "askHow":
-        tagged_message = term
 
+        # If the functor is askHow we add to the term an annotation with the name of the sender agent
         if ilf.functor == "askHow":
+            term = term.with_annotation(f"@askHow_sender[name({agent.name})]")
 
-            print(5643536, term)
-            print(str(term).split()[2].replace(")",""))
-            print(term)
-            print(term[2])
-            print(agent.name)
-            print(str(term[2]))
-
-            term[2] = f"@askHow_sender[name({agent.name})] {term[2]}"
-            print(term)
+        tagged_message = term
     else:
         tagged_message = message.with_annotation(
             agentspeak.Literal("source", (agentspeak.Literal(agent.name), )))

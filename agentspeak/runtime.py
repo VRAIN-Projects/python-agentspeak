@@ -296,13 +296,14 @@ class Rule:
 
 
 class Plan:
-    def __init__(self, trigger, goal_type, head, context, body, str_body):
+    def __init__(self, trigger, goal_type, head, context, body, str_body, annotation):
         self.trigger = trigger
         self.goal_type = goal_type
         self.head = head
         self.context = context
         self.body = body
         self.str_body = str_body
+        self.annotation = annotation
 
     def name(self):
         return "%s%s%s" % (self.trigger.value, self.goal_type.value, self.head)
@@ -483,6 +484,7 @@ class Agent:
             # Gets the string contained in the term with a plan
 
             str_plan = term.args[2] # get the string plan
+
             #str_plan = str_plan.replace("'",'"')
             
             tokens = [] # create a list of tokens
@@ -500,8 +502,9 @@ class Agent:
                 tok, ast_plan = agentspeak.parser.parse_plan(first_token, tokens, log) # parse the plan
                 if tok.lexeme != ".": # if the token lexeme is not "."
                     raise log.error("", tok, "expected end of plan") # raise an error
-                
+            
             # Prepare the conversión of Astplan to Plan
+
             variables = {} # create a dictionary of variables
             actions = agentspeak.stdlib.actions # get the actions
 
@@ -517,9 +520,11 @@ class Agent:
             if ast_plan.body: # if there is a body
                 ast_plan.body.accept(BuildInstructionsVisitor(variables, actions, body, log)) # build the instructions
             
+            
             #Converts the Astplan to Plan
-            plan = Plan(ast_plan.event.trigger, ast_plan.event.goal_type, head, context, body,ast_plan) # create a plan
-
+            plan = Plan(ast_plan.event.trigger, ast_plan.event.goal_type, head, context, body,ast_plan.body,ast_plan.dicts_annotations) # create a plan
+            print("Plan en tellHow",plan2str(plan))
+            print(plan)
             # Add the plan to the agent
             self.add_plan(plan) # add the plan
 
@@ -535,9 +540,11 @@ class Agent:
             if we find it: master agent use tellHow to tell the plan to slave agent
 
             """
-            print("askHow start")
-            print(term.args)
-            #print(type(term.args[0]))
+
+            for annotation in list(term.annots):
+                if "askHow_sender" in annotation:
+                    sender_name = annotation.split("(")[1].split(")")[0]
+
 
             #plans = self.env.agents[str(term.args[0])].plans.values()
             strplans = []
@@ -551,23 +558,24 @@ class Agent:
 
             if strplans:
                 intention = agentspeak.runtime.Intention()
-                receivers = agentspeak.grounded(agent.name, intention)
+                 # 
+                receivers = agentspeak.grounded(sender_name, intention)
                 if not agentspeak.is_list(receivers):
                     receivers = [receivers]
                 receiving_agents = []
                 for receiver in receivers:
                     if agentspeak.is_atom(receiver):
-                        receiving_agents.append(agent.env.agents[receiver.functor])
+                        receiving_agents.append(self.env.agents[receiver.functor])
                     else:
-                        receiving_agents.append(agent.env.agents[receiver])
+                        receiving_agents.append(self.env.agents[receiver])
                 
-                # Modifying term.args, its better create one new
-                agent = str(term.args[0])
+
+                
                 for strplan in strplans:
-                    term.args = (agent, "tellHow", strplan)
+                    term.args = (sender_name, "tellHow", strplan)
                     for receiver in receiving_agents:
                         # work, agent added
-                        receiver.call(agentspeak.Trigger.addition_tell_how, agentspeak.GoalType.achievement, term, intention, agent)
+                        receiver.call(agentspeak.Trigger.addition_tell_how, agentspeak.GoalType.achievement, term, intention)
 
             else:
                 raise log.warning(f"The agent not know the plan {term.args[2]}")
@@ -700,20 +708,17 @@ def plan2str(plan):
     else:
         context = plan.context
     #body = str(plan.str_body).replace('"','\\"')
-    body = plan.str_body
-
+    if plan.annotation is None:
+        label = ""
+    else:
+        label = f"@{list(plan.annotation.keys())[0]}["
+        for annot in plan.annotation[list(plan.annotation.keys())[0]].keys():
+            label += f"{annot}({plan.annotation[list(plan.annotation.keys())[0]][annot]}),"
+        label = label[:-1] + "]"
     
-    return f"{plan.trigger.value}{plan.goal_type.value}{plan.head} : {context} <- {body}."
-
-    """
-    self.trigger = trigger
-        self.goal_type = goal_type
-        self.head = head
-        self.context = context
-        self.body = body
-
-    def name(self):
-        return "%s%s%s" % (self.trigger.value, self.goal_type.value, self.head)"""
+    body = plan.str_body
+    
+    return f"{label} {plan.trigger.value}{plan.goal_type.value}{plan.head} : {context} <- {body}."
 
 class Environment:
     def __init__(self):
@@ -761,17 +766,8 @@ class Environment:
 
             str_body = str(ast_plan.body)
 
-            if "askHow" in str_body:
-                print("Macarrones")
-
-                find_askhow = str_body.find("askHow")
-                find_excl = str_body[find_askhow:].find("!") + find_askhow
-                
-                print(agent.name)
-
-                str_body = f"{str_body[:(find_excl-1)]}@askHow_sender[name(67)] {str_body[(find_excl-1):]}"
-                print(str_body)
-            plan = Plan(ast_plan.event.trigger, ast_plan.event.goal_type, head, context, body, ast_plan.body)
+            plan = Plan(ast_plan.event.trigger, ast_plan.event.goal_type, head, context, body, ast_plan.body, ast_plan.dicts_annotations)
+            print(plan2str(plan))
             agent.add_plan(plan)
 
         # Add beliefs to agent prototype.
@@ -883,7 +879,7 @@ def test_belief(term, agent, intention):
 
 def call(trigger, goal_type, term, agent, intention):
     # work, changing
-    return agent.call(trigger, goal_type, term, intention, agent, delayed=False)
+    return agent.call(trigger, goal_type, term, intention, delayed=False)
 
 
 def call_delayed(trigger, goal_type, term, agent, intention):

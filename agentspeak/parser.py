@@ -919,11 +919,7 @@ def parse_plan(tok, tokens, log):
         tok = next(tokens)
         tok, annotation = parse_literal(tok, tokens, log)
         plan.annotations.append(annotation)
-        print(plan.annotations)
         dict_annotations = create_dict_annotation(str(annotation)) # Create a dict with the annotations of the label
-        
-        print(annotation)
-        print(type(annotation))
 
         if plan.dicts_annotations is not None: # If there are more than one label in the plan that we are looking raise an error
             raise log.error("There are more than one label for one plan")
@@ -943,9 +939,7 @@ def parse_plan(tok, tokens, log):
         tok = next(tokens)
         tok, plan.body = parse_plan_body(tok, tokens, log)
         plan.body.loc = body_loc
-        print(plan.body)
-        print(type(plan.body))
-        print("askHow" in str(plan.body))
+        print(777, plan.body)
 
     return tok, plan
 
