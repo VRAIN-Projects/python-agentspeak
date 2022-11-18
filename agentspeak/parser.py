@@ -906,10 +906,13 @@ def create_dict_annotation(annotation):
         imput = "pred[annotation1(value1),annotation2(value2)]"
         output = {"pred": {"annotation": value1, "annotation2: value2}}
     """
-    key = annotation.split("[")[0]
-    values = annotation.split("[")[1].split("]")[0].split(",")
-    values = {v.split("(")[0]: int(v.split("(")[1].replace(")","")) if v.split("(")[1].replace(")","").isdigit() else v.split("(")[1].replace(")","") for v in values}
-    #values = {v.split("(")[0]: int(v.split("(")[1].replace(")","")) for v in values}
+    if "[" not in annotation:
+        key = annotation
+        values = {}
+    else:
+        key = annotation.split("[")[0]
+        values = annotation.split("[")[1].split("]")[0].split(",")
+        values = {v.split("(")[0]: int(v.split("(")[1].replace(")","")) if v.split("(")[1].replace(")","").isdigit() else v.split("(")[1].replace(")","") for v in values}
 
     return {key: values}
 
@@ -939,7 +942,7 @@ def parse_plan(tok, tokens, log):
         tok = next(tokens)
         tok, plan.body = parse_plan_body(tok, tokens, log)
         plan.body.loc = body_loc
-        print(777, plan.body)
+        
 
     return tok, plan
 

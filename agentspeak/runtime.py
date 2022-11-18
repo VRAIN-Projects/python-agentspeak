@@ -581,7 +581,23 @@ class Agent:
                 raise log.warning(f"The agent not know the plan {term.args[2]}")
 
             
-            return True
+        if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.un_tell_how:
+            """
+            We look in the self.plan list the plans with the label 
+            recieved and we remove these plans.
+            """
+
+            label = term.args[2]
+
+            delete_plan = []
+            plans = self.plans.values()
+            for plan in plans:
+                for differents in plan:
+                    strplan = plan2str(differents)
+                    if strplan.startswith(label):
+                        delete_plan.append(differents)
+                for differents in delete_plan:
+                    plan.remove(differents)
 
         return True # return true
 
@@ -711,10 +727,13 @@ def plan2str(plan):
     if plan.annotation is None:
         label = ""
     else:
-        label = f"@{list(plan.annotation.keys())[0]}["
-        for annot in plan.annotation[list(plan.annotation.keys())[0]].keys():
-            label += f"{annot}({plan.annotation[list(plan.annotation.keys())[0]][annot]}),"
-        label = label[:-1] + "]"
+        if len(list(plan.annotation[list(plan.annotation.keys())[0]].keys())) == 0:
+            label = f"@{list(plan.annotation.keys())[0]}"
+        else:
+            label = f"@{list(plan.annotation.keys())[0]}["
+            for annot in plan.annotation[list(plan.annotation.keys())[0]].keys():
+                label += f"{annot}({plan.annotation[list(plan.annotation.keys())[0]][annot]}),"
+            label = label[:-1] + "]"
     
     body = plan.str_body
     

@@ -109,30 +109,6 @@ def _send(agent, term, intention):
             receiving_agents.append(agent.env.agents[receiver])
 
     # Illocutionary force.
-    """
-    # tell, untell, achieve, unachieve, tellhow, askHow
-    
-    ilf = agentspeak.grounded(term.args[1], intention.scope)
-    if not agentspeak.is_atom(ilf):
-        return
-    if ilf.functor == "tell":
-        goal_type = agentspeak.GoalType.belief
-        trigger = agentspeak.Trigger.addition
-    elif ilf.functor == "untell":
-        goal_type = agentspeak.GoalType.belief
-        trigger = agentspeak.Trigger.removal
-    elif ilf.functor == "achieve":
-        goal_type = agentspeak.GoalType.achievement
-        trigger = agentspeak.Trigger.addition
-    elif ilf.functor == "unachieve":
-        goal_type = agentspeak.GoalType.achievement
-        trigger = agentspeak.Trigger.removal
-    elif ilf.functor == "tellHow":
-        goal_type = agentspeak.GoalType.achievement
-        trigger = agentspeak.Trigger.addition_ask_how
-    elif ilf.functor == "askHow":
-        goal_type = agentspeak.GoalType.achievement
-        trigger = agentspeak.Trigger.addition_ask_how"""
 
     ilf = agentspeak.grounded(term.args[1], intention.scope)
     if not agentspeak.is_atom(ilf):
@@ -159,6 +135,10 @@ def _send(agent, term, intention):
     elif ilf.functor == "askHow":
         goal_type = agentspeak.GoalType.achievement
         trigger = agentspeak.Trigger.addition_ask_how
+    # JORDI 2022-11-18: Addition unTellHow performative for being parsed
+    elif ilf.functor == "unTellHow":
+        goal_type = agentspeak.GoalType.achievement
+        trigger = agentspeak.Trigger.un_tell_how
     else:
         raise agentspeak.AslError("unknown illocutionary force: %s" % ilf)
 
@@ -167,7 +147,7 @@ def _send(agent, term, intention):
     message = agentspeak.freeze(term.args[2], intention.scope, {})
 
     #The message of tellHow is a string that contains a plan, is not a Literal then we don't add the source annotation
-    if ilf.functor == "tellHow" or ilf.functor == "askHow":
+    if ilf.functor == "tellHow" or ilf.functor == "askHow" or ilf.functor == "unTellHow":
 
         # If the functor is askHow we add to the term an annotation with the name of the sender agent
         if ilf.functor == "askHow":
