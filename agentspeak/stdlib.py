@@ -151,6 +151,7 @@ def _send(agent, term, intention):
 
         # If the functor is askHow we add to the term an annotation with the name of the sender agent
         if ilf.functor == "askHow":
+
             term = term.with_annotation(f"@askHow_sender[name({agent.name})]")
 
         tagged_message = term

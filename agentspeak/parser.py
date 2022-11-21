@@ -238,6 +238,7 @@ class AstPlan(AstNode):
         self.event = None
         self.context = None
         self.body = None
+        self.args = [None,None]
 
     def accept(self, visitor):
         return visitor.visit_plan(self)
@@ -933,6 +934,10 @@ def parse_plan(tok, tokens, log):
     plan.event = event
     plan.loc = event.loc
 
+    if "(" in str(event):
+        plan.args[0] = str(event).split("(")[1].split(")")[0]
+    if "[" in str(event):
+        plan.args[1] = str(event).split("[")[1].split("]")[0]
     if tok.lexeme == ":":
         tok = next(tokens)
         tok, plan.context = parse_term(tok, tokens, log)
@@ -1048,6 +1053,7 @@ def parse_agent(filename, tokens, log, included_files, directive=None):
             agent.goals.append(ast_node)
         elif tok.lexeme in ["@", "+", "-"]:
             tok, last_plan = parse_plan(tok, tokens, log)
+  
             if tok.lexeme != ".":
                 log.info("missing '.' after this plan", loc=last_plan.loc)
                 raise log.error("expected '.' after plan, got '%s'", tok.lexeme, loc=tok.loc, extra_locs=[last_plan.loc])

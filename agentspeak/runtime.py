@@ -304,6 +304,7 @@ class Plan:
         self.body = body
         self.str_body = str_body
         self.annotation = annotation
+        self.args = [None,None]
 
     def name(self):
         return "%s%s%s" % (self.trigger.value, self.goal_type.value, self.head)
@@ -484,7 +485,7 @@ class Agent:
             # Gets the string contained in the term with a plan
 
             str_plan = term.args[2] # get the string plan
-            print(str_plan)
+          
             #str_plan = str_plan.replace("'",'"')
             
             tokens = [] # create a list of tokens
@@ -504,8 +505,7 @@ class Agent:
                     raise log.error("", tok, "expected end of plan") # raise an error
             
             # Prepare the conversión of Astplan to Plan
-
-            variables = {0:"N",1:"M"} # create a dictionary of variables
+            variables = {} # create a dictionary of variables
             actions = agentspeak.stdlib.actions # get the actions
             
             head = ast_plan.event.head.accept(BuildTermVisitor(variables)) # get the head
@@ -523,21 +523,18 @@ class Agent:
             
             #Converts the Astplan to Plan
             
-            print(type(head))
-            print(head.args[1])
-            print(head.functor)
-            print(head.annots)
             plan = Plan(ast_plan.event.trigger, ast_plan.event.goal_type, head, context, body,ast_plan.body,ast_plan.dicts_annotations) # create a plan
-            print("Plan en tellHow",plan2str(plan))
-            print(plan)
+            
+            if ast_plan.args[0] is not None:
+                plan.args[0] = ast_plan.args[0]
+
+            if ast_plan.args[1] is not None:
+                plan.args[1] = ast_plan.args[1]
+            
+          
             # Add the plan to the agent
             self.add_plan(plan) # add the plan
 
-            plans = self.plans.values()
-            for plan in plans:
-                for differents in plan:
-                    strplan = plan2str(differents)
-                    print(strplan)
 
 
 
@@ -554,14 +551,11 @@ class Agent:
 
             """
 
-            print("Llegamos al askhow")
-            print(term)
 
             for annotation in list(term.annots):
                 if "askHow_sender" in annotation:
                     sender_name = annotation.split("(")[1].split(")")[0]
 
-            print(sender_name)
 
 
 
@@ -570,29 +564,32 @@ class Agent:
             
             plans = self.plans.values()
             for plan in plans:
-                print(plan[0].name(), term.args[2])
+          
                 if "(" in plan[0].name() and "(" in term.args[2]:
-                    print(True)
+                
                     if plan[0].name().split("(")[0] == term.args[2].split("(")[0]:
-                        print(True)
-                        print(plan[0].name().split("(")[1].split(","))
-                        print(term.args[2].split("(")[1].split(","))
 
                         if len(plan[0].name().split("(")[1].split(",")) == len(term.args[2].split("(")[1].split(",")):
-                            print(True)
+                           
                             for differents in plan:
+                               
                                 strplan = plan2str(differents)
+                               
+
+                                first_open = strplan.find("(")
+                                first_close = strplan.find(")")
+
+                                strplan = strplan[:first_open+1] + differents.args[0] + strplan[first_close:]
+ 
                                 strplans.append(strplan)
-
-                                open = strplan.find("(")
-                                close = strplan.find(")")
-
-                                strplan[open:close]
                 else:
                     if plan[0].name() == term.args[2]:
                         for differents in plan:
                             strplan = plan2str(differents)
                             strplans.append(strplan)
+          
+
+            
 
             if strplans:
                 intention = agentspeak.runtime.Intention()
@@ -610,7 +607,7 @@ class Agent:
 
                 
                 for strplan in strplans:
-                    print(1111,strplan)
+                   
                     term.args = (sender_name, "tellHow", strplan)
                     for receiver in receiving_agents:
                         # work, agent added
@@ -825,7 +822,16 @@ class Environment:
             str_body = str(ast_plan.body)
 
             plan = Plan(ast_plan.event.trigger, ast_plan.event.goal_type, head, context, body, ast_plan.body, ast_plan.dicts_annotations)
-            print(plan2str(plan))
+           
+
+            if ast_plan.args[0] is not None:
+                plan.args[0] = ast_plan.args[0]
+
+            if ast_plan.args[1] is not None:
+                plan.args[1] = ast_plan.args[1]
+
+
+            
             agent.add_plan(plan)
 
         # Add beliefs to agent prototype.
