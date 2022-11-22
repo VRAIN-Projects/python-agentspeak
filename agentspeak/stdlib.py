@@ -135,7 +135,7 @@ def _send(agent, term, intention):
     elif ilf.functor == "askHow":
         goal_type = agentspeak.GoalType.achievement
         trigger = agentspeak.Trigger.addition_ask_how
-    # JORDI 2022-11-18: Addition unTellHow performative for being parsed
+    # JCARROS 2022-11-18: Addition unTellHow performative for being parsed
     elif ilf.functor == "unTellHow":
         goal_type = agentspeak.GoalType.achievement
         trigger = agentspeak.Trigger.un_tell_how
@@ -151,7 +151,6 @@ def _send(agent, term, intention):
 
         # If the functor is askHow we add to the term an annotation with the name of the sender agent
         if ilf.functor == "askHow":
-
             term = term.with_annotation(f"@askHow_sender[name({agent.name})]")
 
         tagged_message = term

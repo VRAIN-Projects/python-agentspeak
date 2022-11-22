@@ -238,7 +238,7 @@ class AstPlan(AstNode):
         self.event = None
         self.context = None
         self.body = None
-        self.args = [None,None]
+        self.args = [None,None] # List of the attributes and annotations of the AslPlan
 
     def accept(self, visitor):
         return visitor.visit_plan(self)
@@ -906,6 +906,11 @@ def create_dict_annotation(annotation):
     For instance:
         imput = "pred[annotation1(value1),annotation2(value2)]"
         output = {"pred": {"annotation": value1, "annotation2: value2}}
+    If this function receives a label without annotations then will return a dictionary with the predicate
+    For instance:
+        imput = "pred"
+        output = {"pred": {}}
+
     """
     if "[" not in annotation:
         key = annotation
@@ -935,9 +940,13 @@ def parse_plan(tok, tokens, log):
     plan.loc = event.loc
 
     if "(" in str(event):
+        # If we find a () in the event this indicate that the trigger plan have arguments, we save them in plan.args[0]
         plan.args[0] = str(event).split("(")[1].split(")")[0]
     if "[" in str(event):
+        # If we find a () in the event this indicate that the trigger plan have annotations, we save them in plan.args[1]
         plan.args[1] = str(event).split("[")[1].split("]")[0]
+
+
     if tok.lexeme == ":":
         tok = next(tokens)
         tok, plan.context = parse_term(tok, tokens, log)

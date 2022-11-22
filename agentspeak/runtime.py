@@ -535,6 +535,10 @@ class Agent:
             # Add the plan to the agent
             self.add_plan(plan) # add the plan
 
+            for plans in self.plans.values():
+                for plan in plans:
+                    print(plan2str(plan))
+
 
 
 
@@ -542,54 +546,81 @@ class Agent:
             JFERRUS 2022-10-06: Addition of a new performative
             The attributes achievement and addition_ask_how are set in the function _send from stdlib.py.
             These attributes belong to AskHow performative
-        """
-        if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.addition_ask_how: # if it is an achievement and an addition_ask_how
-            """
-            09-11-2022
+
+            JCARROS 2022-11-06
             We look in the plan.list of the slave agent the plan that master want,
             if we find it: master agent use tellHow to tell the plan to slave agent
-
-            """
-
+        """
+        if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.addition_ask_how: # if it is an achievement and an addition_ask_how
 
             for annotation in list(term.annots):
+                # We look in the annotations and we save the name of the agent sender
                 if "askHow_sender" in annotation:
                     sender_name = annotation.split("(")[1].split(")")[0]
 
-
-
-
-            #plans = self.env.agents[str(term.args[0])].plans.values()
+            
             strplans = []
             
             plans = self.plans.values()
             for plan in plans:
-          
-                if "(" in plan[0].name() and "(" in term.args[2]:
-                
+                if "(" in plan[0].name() and "(" in term.args[2]: 
+                    print(plan[0].name(), term.args[2])
+                    # If the plan have attributes 
                     if plan[0].name().split("(")[0] == term.args[2].split("(")[0]:
-
+                        print(plan[0].name().split("(")[0],term.args[2].split("(")[0])
+                        # And have the same number of attributes
                         if len(plan[0].name().split("(")[1].split(",")) == len(term.args[2].split("(")[1].split(",")):
-                           
+                            print(1,plan[0].name().split("(")[1].split(","))
+                            print(2,term.args[2].split("(")[1].split(","))
                             for differents in plan:
-                               
-                                strplan = plan2str(differents)
-                               
+        
+                                strplan = plan2str(differents)        
 
                                 first_open = strplan.find("(")
                                 first_close = strplan.find(")")
 
                                 strplan = strplan[:first_open+1] + differents.args[0] + strplan[first_close:]
- 
+
+                                print(strplan)
+                                print(differents.args)
+
+                                if differents.args[1] is not None:
+
+                                    if "@" in strplan:
+                                        first = strplan.find("+")
+                                    else:
+                                        first = 0
+
+                                    first_open = strplan.find("[",first)
+                                    first_close = strplan.find("]",first)
+
+                                    print(first_open,first_close)
+                                    strplan = strplan[:first_open+1] + differents.args[1] + strplan[first_close:]
+                                    print(strplan)
+
                                 strplans.append(strplan)
+                
                 else:
                     if plan[0].name() == term.args[2]:
                         for differents in plan:
                             strplan = plan2str(differents)
+
+                            if differents.args[1] is not None:
+                                    
+                                    if "@" in strplan:
+                                        first = strplan.find("+")
+                                    else:
+                                        first = 0
+
+                                    first_open = strplan.find("[",first)
+                                    first_close = strplan.find("]",first)
+
+                                    print(first_open,first_close)
+                                    strplan = strplan[:first_open+1] + differents.args[1] + strplan[first_close:]
+                            
                             strplans.append(strplan)
           
 
-            
 
             if strplans:
                 intention = agentspeak.runtime.Intention()
@@ -616,12 +647,15 @@ class Agent:
             else:
                 raise log.warning(f"The agent not know the plan {term.args[2]}")
 
-            
+        """
+        JCARROS 2022-10-06: Addition of a new performative
+        The attributes achievement and un_tell_how are set in the function _send from stdlib.py.
+        These attributes belong to unTellHow performative
+
+        We look in the self.plan list the plans with the label 
+        recieved and we remove these plans.
+            """    
         if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.un_tell_how:
-            """
-            We look in the self.plan list the plans with the label 
-            recieved and we remove these plans.
-            """
 
             label = term.args[2]
 
@@ -759,7 +793,7 @@ def plan2str(plan):
         context = "true"
     else:
         context = plan.context
-    #body = str(plan.str_body).replace('"','\\"')
+    
     if plan.annotation is None:
         label = ""
     else:

@@ -1,4 +1,4 @@
 
 
-+!hello(Msg,M) <-
-  .print("got a message from","saying", Msg, M).
++!hello(Msg,M)[source(Sender)] <-
+  .print("got a message from saying", Msg, M, Sender).
