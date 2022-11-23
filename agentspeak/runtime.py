@@ -535,12 +535,6 @@ class Agent:
             # Add the plan to the agent
             self.add_plan(plan) # add the plan
 
-            for plans in self.plans.values():
-                for plan in plans:
-                    print(plan2str(plan))
-
-
-
 
         """ 
             JFERRUS 2022-10-06: Addition of a new performative
@@ -558,33 +552,30 @@ class Agent:
                 if "askHow_sender" in annotation:
                     sender_name = annotation.split("(")[1].split(")")[0]
 
-            
             strplans = []
             
             plans = self.plans.values()
             for plan in plans:
                 if "(" in plan[0].name() and "(" in term.args[2]: 
-                    print(plan[0].name(), term.args[2])
                     # If the plan have attributes 
                     if plan[0].name().split("(")[0] == term.args[2].split("(")[0]:
-                        print(plan[0].name().split("(")[0],term.args[2].split("(")[0])
                         # And have the same number of attributes
                         if len(plan[0].name().split("(")[1].split(",")) == len(term.args[2].split("(")[1].split(",")):
-                            print(1,plan[0].name().split("(")[1].split(","))
-                            print(2,term.args[2].split("(")[1].split(","))
                             for differents in plan:
         
                                 strplan = plan2str(differents)        
+                                
+                                # We are going to change the id by the name of the variables
+                                #  +!plan(id_1, id_2) to +!plan(A,B)
 
                                 first_open = strplan.find("(")
                                 first_close = strplan.find(")")
 
                                 strplan = strplan[:first_open+1] + differents.args[0] + strplan[first_close:]
 
-                                print(strplan)
-                                print(differents.args)
-
                                 if differents.args[1] is not None:
+                                    # If the plan have annotations 
+                                    # +!plan(id_1, id_2)[source(id_3)] to +!plan(A,B)[source(C)]
 
                                     if "@" in strplan:
                                         first = strplan.find("+")
@@ -594,9 +585,7 @@ class Agent:
                                     first_open = strplan.find("[",first)
                                     first_close = strplan.find("]",first)
 
-                                    print(first_open,first_close)
                                     strplan = strplan[:first_open+1] + differents.args[1] + strplan[first_close:]
-                                    print(strplan)
 
                                 strplans.append(strplan)
                 
@@ -606,6 +595,9 @@ class Agent:
                             strplan = plan2str(differents)
 
                             if differents.args[1] is not None:
+
+                                    # If the plan have annotations 
+                                    # +!plan(id_1, id_2)[source(id_3)] to +!plan(A,B)[source(C)]
                                     
                                     if "@" in strplan:
                                         first = strplan.find("+")
@@ -615,7 +607,6 @@ class Agent:
                                     first_open = strplan.find("[",first)
                                     first_close = strplan.find("]",first)
 
-                                    print(first_open,first_close)
                                     strplan = strplan[:first_open+1] + differents.args[1] + strplan[first_close:]
                             
                             strplans.append(strplan)
@@ -624,7 +615,6 @@ class Agent:
 
             if strplans:
                 intention = agentspeak.runtime.Intention()
-                 # 
                 receivers = agentspeak.grounded(sender_name, intention)
                 if not agentspeak.is_list(receivers):
                     receivers = [receivers]
@@ -641,7 +631,6 @@ class Agent:
                    
                     term.args = (sender_name, "tellHow", strplan)
                     for receiver in receiving_agents:
-                        # work, agent added
                         receiver.call(agentspeak.Trigger.addition_tell_how, agentspeak.GoalType.achievement, term, intention)
 
             else:
@@ -654,7 +643,7 @@ class Agent:
 
         We look in the self.plan list the plans with the label 
         recieved and we remove these plans.
-            """    
+        """    
         if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.un_tell_how:
 
             label = term.args[2]
@@ -666,8 +655,8 @@ class Agent:
                     strplan = plan2str(differents)
                     if strplan.startswith(label):
                         delete_plan.append(differents)
-                for differents in delete_plan:
-                    plan.remove(differents)
+            for differents in delete_plan:
+                plan.remove(differents)
 
         return True # return true
 
@@ -788,7 +777,9 @@ class Agent:
 
 
 def plan2str(plan):
-    #work
+    """
+    This function recieves a plan and return the plan as string
+    """
     if isinstance(plan.context, type(TrueQuery())):
         context = "true"
     else:
@@ -976,7 +967,6 @@ def test_belief(term, agent, intention):
 
 
 def call(trigger, goal_type, term, agent, intention):
-    # work, changing
     return agent.call(trigger, goal_type, term, intention, delayed=False)
 
 

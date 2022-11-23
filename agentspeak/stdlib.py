@@ -160,7 +160,6 @@ def _send(agent, term, intention):
 
     # Broadcast.
     for receiver in receiving_agents:
-        # work, agent added
         receiver.call(trigger, goal_type, tagged_message, agentspeak.runtime.Intention(), agent)
 
     yield
