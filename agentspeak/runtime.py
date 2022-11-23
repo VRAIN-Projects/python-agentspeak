@@ -547,6 +547,45 @@ class Agent:
         """
         if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.addition_ask_how: # if it is an achievement and an addition_ask_how
 
+           return self._askHow(trigger, goal_type, term, calling_intention, delayed)
+
+        """
+        JCARROS 2022-10-06: Addition of a new performative
+        The attributes achievement and un_tell_how are set in the function _send from stdlib.py.
+        These attributes belong to unTellHow performative
+
+        We look in the self.plan list the plans with the label 
+        recieved and we remove these plans.
+        """    
+        if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.un_tell_how:
+
+            label = term.args[2]
+
+            delete_plan = []
+            plans = self.plans.values()
+            for plan in plans:
+                for differents in plan:
+                    strplan = plan2str(differents)
+                    if strplan.startswith(label):
+                        delete_plan.append(differents)
+            for differents in delete_plan:
+                plan.remove(differents)
+
+        return True # return true
+
+    def _askHow(self, trigger, goal_type, term, calling_intention, delayed=False):
+        """ 
+            JFERRUS 2022-10-06: Addition of a new performative
+            The attributes achievement and addition_ask_how are set in the function _send from stdlib.py.
+            These attributes belong to AskHow performative
+
+            JCARROS 2022-11-06
+            We look in the plan.list of the slave agent the plan that master want,
+            if we find it: master agent use tellHow to tell the plan to slave agent
+        """
+        if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.addition_ask_how: # if it is an achievement and an addition_ask_how
+
+
             for annotation in list(term.annots):
                 # We look in the annotations and we save the name of the agent sender
                 if "askHow_sender" in annotation:
@@ -635,30 +674,6 @@ class Agent:
 
             else:
                 raise log.warning(f"The agent not know the plan {term.args[2]}")
-
-        """
-        JCARROS 2022-10-06: Addition of a new performative
-        The attributes achievement and un_tell_how are set in the function _send from stdlib.py.
-        These attributes belong to unTellHow performative
-
-        We look in the self.plan list the plans with the label 
-        recieved and we remove these plans.
-        """    
-        if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.un_tell_how:
-
-            label = term.args[2]
-
-            delete_plan = []
-            plans = self.plans.values()
-            for plan in plans:
-                for differents in plan:
-                    strplan = plan2str(differents)
-                    if strplan.startswith(label):
-                        delete_plan.append(differents)
-            for differents in delete_plan:
-                plan.remove(differents)
-
-        return True # return true
 
 
     def add_belief(self, term, scope):
