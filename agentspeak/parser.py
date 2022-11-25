@@ -901,7 +901,6 @@ def parse_event(tok, tokens, log):
 
 def create_dict_annotation(annotation):
     """
-    03-11-22
     This function recieves a label as string and retuns a dictionary with the pred and annotations
     For instance:
         imput = "pred[annotation1(value1),annotation2(value2)]"

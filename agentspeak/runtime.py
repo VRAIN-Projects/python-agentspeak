@@ -481,7 +481,7 @@ class Agent:
             The attributes achievement and addition_tell_how are set in the function _send from stdlib.py.
             These attributes belong to TellHow performative
         """
-        if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.addition_tell_how: # if it is an achievement and an addition_tell_how
+        if goal_type == agentspeak.GoalType.tellHow and trigger == agentspeak.Trigger.addition: # if it is an achievement and an addition_tell_how
             # Gets the string contained in the term with a plan
 
             str_plan = term.args[2] # get the string plan
@@ -545,7 +545,7 @@ class Agent:
             We look in the plan.list of the slave agent the plan that master want,
             if we find it: master agent use tellHow to tell the plan to slave agent
         """
-        if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.addition_ask_how: # if it is an achievement and an addition_ask_how
+        if goal_type == agentspeak.GoalType.askHow and trigger == agentspeak.Trigger.addition: # if it is an achievement and an addition_ask_how
 
            return self._askHow(trigger, goal_type, term, calling_intention, delayed)
 
@@ -557,7 +557,7 @@ class Agent:
         We look in the self.plan list the plans with the label 
         recieved and we remove these plans.
         """    
-        if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.un_tell_how:
+        if goal_type == agentspeak.GoalType.tellHow and trigger == agentspeak.Trigger.removal:
 
             label = term.args[2]
 
@@ -583,7 +583,7 @@ class Agent:
             We look in the plan.list of the slave agent the plan that master want,
             if we find it: master agent use tellHow to tell the plan to slave agent
         """
-        if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.addition_ask_how: # if it is an achievement and an addition_ask_how
+        if goal_type == agentspeak.GoalType.askHow and trigger == agentspeak.Trigger.addition: # if it is an achievement and an addition_ask_how
 
 
             for annotation in list(term.annots):
@@ -591,68 +591,9 @@ class Agent:
                 if "askHow_sender" in annotation:
                     sender_name = annotation.split("(")[1].split(")")[0]
 
-            strplans = []
-            
-            plans = self.plans.values()
-            for plan in plans:
-                if "(" in plan[0].name() and "(" in term.args[2]: 
-                    # If the plan have attributes 
-                    if plan[0].name().split("(")[0] == term.args[2].split("(")[0]:
-                        # And have the same number of attributes
-                        if len(plan[0].name().split("(")[1].split(",")) == len(term.args[2].split("(")[1].split(",")):
-                            for differents in plan:
-        
-                                strplan = plan2str(differents)        
-                                
-                                # We are going to change the id by the name of the variables
-                                #  +!plan(id_1, id_2) to +!plan(A,B)
-
-                                first_open = strplan.find("(")
-                                first_close = strplan.find(")")
-
-                                strplan = strplan[:first_open+1] + differents.args[0] + strplan[first_close:]
-
-                                if differents.args[1] is not None:
-                                    # If the plan have annotations 
-                                    # +!plan(id_1, id_2)[source(id_3)] to +!plan(A,B)[source(C)]
-
-                                    if "@" in strplan:
-                                        first = strplan.find("+")
-                                    else:
-                                        first = 0
-
-                                    first_open = strplan.find("[",first)
-                                    first_close = strplan.find("]",first)
-
-                                    strplan = strplan[:first_open+1] + differents.args[1] + strplan[first_close:]
-
-                                strplans.append(strplan)
-                
-                else:
-                    if plan[0].name() == term.args[2]:
-                        for differents in plan:
-                            strplan = plan2str(differents)
-
-                            if differents.args[1] is not None:
-
-                                    # If the plan have annotations 
-                                    # +!plan(id_1, id_2)[source(id_3)] to +!plan(A,B)[source(C)]
+            plans_wanted = self.find_plans(term)
                                     
-                                    if "@" in strplan:
-                                        first = strplan.find("+")
-                                    else:
-                                        first = 0
-
-                                    first_open = strplan.find("[",first)
-                                    first_close = strplan.find("]",first)
-
-                                    strplan = strplan[:first_open+1] + differents.args[1] + strplan[first_close:]
-                            
-                            strplans.append(strplan)
-          
-
-
-            if strplans:
+            if plans_wanted:
                 intention = agentspeak.runtime.Intention()
                 receivers = agentspeak.grounded(sender_name, intention)
                 if not agentspeak.is_list(receivers):
@@ -664,17 +605,42 @@ class Agent:
                     else:
                         receiving_agents.append(self.env.agents[receiver])
                 
-
-                
-                for strplan in strplans:
-                   
+                for strplan in plans_wanted:
                     term.args = (sender_name, "tellHow", strplan)
                     for receiver in receiving_agents:
-                        receiver.call(agentspeak.Trigger.addition_tell_how, agentspeak.GoalType.achievement, term, intention)
-
+                        receiver.call(agentspeak.Trigger.addition, agentspeak.GoalType.tellHow, term, intention)
             else:
+                log = agentspeak.Log(LOGGER)
                 raise log.warning(f"The agent not know the plan {term.args[2]}")
 
+
+    
+    def find_plans(self, term):
+        strplans = []
+        plans = self.plans.values()
+        for plan in plans:
+            
+            plan_have_annotation = "[" in plan[0].name()
+            plan_have_attribute = "(" in plan[0].name() and "(" in term.args[2] if not plan_have_annotation else "(" in plan[0].name()[:plan[0].name().find("[")] and "(" in term.args[2]
+            plan_have_same_number_of_attributes = len(plan[0].name().split("(")[1].split(",")) == len(term.args[2].split("(")[1].split(",")) if plan_have_attribute else False
+            same_plan_name = plan[0].name().split("(")[0] == term.args[2].split("(")[0] if plan_have_attribute else plan[0].name() == term.args[2]
+
+            if same_plan_name:
+                for differents in plan:
+                    strplan = plan2str(differents)
+                    first = strplan.find("!") if "@" in strplan else 0
+                    
+                    if plan_have_annotation:
+                        first_open, first_close = strplan.find("[",first), strplan.find("]",first)
+                        strplan = strplan[:first_open+1] + differents.args[1] + strplan[first_close:]
+                    
+                    if plan_have_attribute and plan_have_same_number_of_attributes:
+                        first_open, first_close = strplan.find("(",first), strplan.find(")", first)
+                        strplan = strplan[:first_open+1] + differents.args[0] + strplan[first_close:]
+                    
+                    strplans.append(strplan)
+
+        return strplans
 
     def add_belief(self, term, scope):
         term = term.grounded(scope)

@@ -209,11 +209,6 @@ class Log(object):
 class Trigger(enum.Enum):
     addition = "+"
     removal  = "-"
-    # JFERRUS 2022-09-29 : Added support for the new trigger type for performatives
-    addition_tell_how = "+^"
-    addition_ask_how = "+?"
-    # I dont know if this is correct
-    un_tell_how = "-^"
 
 
 @enum.unique
@@ -221,6 +216,8 @@ class GoalType(enum.Enum):
     achievement = "!"
     test        = "?"
     belief      = ""
+    tellHow     = "+^"
+    askHow      = "+?"
 
 
 @enum.unique
