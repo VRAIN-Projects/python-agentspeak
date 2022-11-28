@@ -234,11 +234,11 @@ class AstPlan(AstNode):
     def __init__(self):
         super(AstPlan, self).__init__()
         self.annotations = []
-        self.dicts_annotations = None # If the plan have label, this variable will be a dict with the annotations
+        self.dicts_annotations = None 
         self.event = None
         self.context = None
         self.body = None
-        self.args = [None,None] # List of the attributes and annotations of the AslPlan
+        self.args = [None,None]
 
     def accept(self, visitor):
         return visitor.visit_plan(self)
@@ -909,7 +909,6 @@ def create_dict_annotation(annotation):
     For instance:
         imput = "pred"
         output = {"pred": {}}
-
     """
     if "[" not in annotation:
         key = annotation
@@ -927,22 +926,24 @@ def parse_plan(tok, tokens, log):
         tok = next(tokens)
         tok, annotation = parse_literal(tok, tokens, log)
         plan.annotations.append(annotation)
-        dict_annotations = create_dict_annotation(str(annotation)) # Create a dict with the annotations of the label
 
-        if plan.dicts_annotations is not None: # If there are more than one label in the plan that we are looking raise an error
+        # Create a dict with the annotations of the label and add it to the plan
+        dict_annotations = create_dict_annotation(str(annotation)) 
+        if plan.dicts_annotations is not None: 
             raise log.error("There are more than one label for one plan")
         else:
-            plan.dicts_annotations = dict_annotations # Save the dict in the AstPlan
+            plan.dicts_annotations = dict_annotations 
         
     tok, event = parse_event(tok, tokens, log)
     plan.event = event
     plan.loc = event.loc
 
+    # If we find a () in the event this indicate that the trigger plan have arguments, we save them in plan.args[0]
     if "(" in str(event):
-        # If we find a () in the event this indicate that the trigger plan have arguments, we save them in plan.args[0]
         plan.args[0] = str(event).split("(")[1].split(")")[0]
+
+    # If we find a [] in the event this indicate that the trigger plan have annotations, we save them in plan.args[1]
     if "[" in str(event):
-        # If we find a () in the event this indicate that the trigger plan have annotations, we save them in plan.args[1]
         plan.args[1] = str(event).split("[")[1].split("]")[0]
 
 
