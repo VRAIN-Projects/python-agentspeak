@@ -377,6 +377,7 @@ def is_structure(term):
 def reroll(scope, stack, choicepoint):
     while stack:
         t = stack.pop()
+        print("RERROLL", t)
         if t is choicepoint:
             return
         else:

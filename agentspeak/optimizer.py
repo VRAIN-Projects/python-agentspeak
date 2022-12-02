@@ -1063,6 +1063,7 @@ class TermGroundingCb(DefaultCallback):
 
     def expand_and_into_list(self, ast_node):
         def f(t):
+            print("We are here")
             if isinstance(t, AstBinaryOp) and t.operator == BinaryOp.op_and:
                 return f(t.left) + f(t.right)
             else:
