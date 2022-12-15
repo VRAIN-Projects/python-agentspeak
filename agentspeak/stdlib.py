@@ -149,7 +149,6 @@ def _send(agent, term, intention):
     else:
         tagged_message = message.with_annotation(
             agentspeak.Literal("source", (agentspeak.Literal(agent.name), )))
-
     # Broadcast.
     for receiver in receiving_agents:
         receiver.call(trigger, goal_type, tagged_message, agentspeak.runtime.Intention())

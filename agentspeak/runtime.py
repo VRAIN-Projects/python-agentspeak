@@ -29,6 +29,7 @@ import agentspeak
 import agentspeak.parser
 import agentspeak.lexer
 import agentspeak.util
+#import agentspeak.affective_agent 
 
 from agentspeak import UnaryOp, BinaryOp, AslError, asl_str
 #from build.lib.agentspeak.lexer import TokenType
@@ -183,7 +184,6 @@ class ActionQuery:
         self.impl = impl
 
     def execute(self, agent, intention):
-        print("ActionQuery.execute", self.term, self.impl)
         for _ in self.impl(agent, self.term, intention):
             yield
 
@@ -195,7 +195,6 @@ class TermQuery:
     def execute(self, agent, intention):
         # Boolean constants.
         term = agentspeak.evaluate(self.term, intention.scope)
-        print("TermQuery.execute", self.term, term)
         if term is True:
             yield
             return
@@ -204,13 +203,11 @@ class TermQuery:
 
         try:
             group = term.literal_group()
-            print("TermQuery.execute group", group)
         except AttributeError:
             raise AslError("expected boolean or literal in query context, got: '%s'" % term)
 
         # Query on the belief base.
         for belief in agent.beliefs[group]:
-            print("TermQuery.execute belief", belief)
             for _ in agentspeak.unify_annotated(term, belief, intention.scope, intention.stack):
                 yield
 
@@ -218,7 +215,6 @@ class TermQuery:
 
         # Follow rules.
         for rule in agent.rules[group]:
-            print("TermQuery.execute rule", rule)
             rule = copy.deepcopy(rule)
 
             intention.stack.append(choicepoint)
@@ -285,7 +281,6 @@ class UnifyQuery:
         self.right = right
 
     def execute(self, agent, intention):
-        print("UnifyQuery.execute", self.left, self.right)
         return agentspeak.unify_annotated(self.left, self.right, intention.scope, intention.stack)
 
     def __str__(self):
@@ -321,6 +316,7 @@ class Event:
         self.trigger = trigger
         self.goal_type = goal_type
         self.head = head
+        print("This is an event", str(self))
 
     def __str__(self):
         return "%s%s%s" % (self.trigger.value, self.goal_type.value, self.head)
@@ -347,6 +343,10 @@ class Intention:
         self.choicepoint_stack = collections.deque()
 
         self.waiter = None
+        
+    def __str__(self):
+        string = f"instr: {self.instr}, head_term: {self.head_term}, calling_term: {self.calling_term}, scope: {self.scope}, stack: {[inten for inten in  list(self.stack)]}, query_stack: {[inten for inten in  list(self.query_stack)]}, choicepoint_stack: {[inten for inten in  list(self.choicepoint_stack)]}"
+        return string
 
 
 class Agent:
@@ -554,7 +554,7 @@ class Agent:
 
         # If the agent has any plan that match with the plan wanted, then the agent will send the plan to the agent that asked                       
         if plans_wanted:
-            intention = agentspeak.runtime.Intention()
+            intention = Intention()
             receivers = agentspeak.grounded(sender_name, intention)
             if not agentspeak.is_list(receivers):
                 receivers = [receivers]
@@ -572,8 +572,6 @@ class Agent:
         else:
             log = agentspeak.Log(LOGGER)
             raise log.warning(f"The agent not know the plan {term.args[2]}")
-
-
     
     def find_plans(self, term):
         # Find the plans that match with the plan wanted
@@ -658,28 +656,20 @@ class Agent:
             return min(deadlines)
 
     def step(self):
-        print("step")
-        while self.intentions and not self.intentions[0]:
-            print("self.intentions:",self.intentions)
-            print("self.intentions[0]:",self.intentions[0])
-            self.intentions.popleft()
+        while self.intentions and not self.intentions[0]: # while self.intentions is not empty and the first element of self.intentions is empty
+            self.intentions.popleft() # remove the first element of self.intentions
 
-        for intention_stack in self.intentions:
-            print("intention_stack:",intention_stack)
-            print([i.head_term for i in list(intention_stack)])
+        for intention_stack in self.intentions: 
             # Check if the intention has no length
             if not intention_stack:
                 continue
             
-            # We select the las intention of the intention_stack ¿?
+            # We select the last intention of the intention_stack ¿?
             intention = intention_stack[-1]
-            print("intention:",intention.head_term)
 
             # Suspended / waiting.
             if intention.waiter is not None:
-                print("intention.waiter:",intention.waiter)
                 if intention.waiter.poll(self.env):
-                    print("intention.waiter.poll(self.env):",intention.waiter.poll(self.env))
                     intention.waiter = None
                 else:
                     continue
@@ -693,31 +683,26 @@ class Agent:
             return False
         
         instr = intention.instr
-        print("instr:",instr)
-        print("type(instr):",type(instr))
 
         if not instr: # If there is no instruction
-            intention_stack.pop()
+            intention_stack.pop() # Remove the last element of the intention_stack
             if not intention_stack:
-                self.intentions.remove(intention_stack)
+                self.intentions.remove(intention_stack) # Remove the intention_stack from the self.intentions
             elif intention.calling_term:
-                print("intention.calling_term:",intention.calling_term)
                 frozen = intention.head_term.freeze(intention.scope, {})
+                
                 calling_intention = intention_stack[-1]
                 if not agentspeak.unify(intention.calling_term, frozen, calling_intention.scope, calling_intention.stack):
                     raise RuntimeError("back unification failed")
             return True
 
         try: 
-            if instr.f(self, intention): 
-                print("instr.f(self, intention):",instr.f(self, intention))
-                print("type(instr.f):",type(instr.f))
-                intention.instr = instr.success
+            if instr.f(self, intention): # If the instruction is true
+                intention.instr = instr.success # We set the intention.instr to the instr.success
             else:
-                intention.instr = instr.failure
-                print("instr.failure:",instr.failure)
-                if not intention.instr:
-                    raise AslError("plan failure")
+                intention.instr = instr.failure # We set the intention.instr to the instr.failure
+                if not intention.instr: # If there is no instr.failure
+                    raise AslError("plan failure") # We raise an error
         except AslError as err:
             log = agentspeak.Log(LOGGER)
             raise log.error("%s", err, loc=instr.loc, extra_locs=instr.extra_locs)
@@ -774,7 +759,9 @@ class Environment:
 
     def build_agent_from_ast(self, source, ast_agent, actions, agent_cls=Agent, name=None):
         # This function is also called by the optimizer.
-
+        
+        agent_cls = agentspeak.affective_agent.AffectiveAgent
+        
         log = agentspeak.Log(LOGGER, 3)
         agent = agent_cls(self, self._make_name(name or source.name))
 
@@ -836,6 +823,7 @@ class Environment:
 
     def _build_agent(self, source, actions, agent_cls=Agent, name=None):
         # Parse source.
+        #agent_cls = agentspeak.affective_agent.AffectiveAgent
         log = agentspeak.Log(LOGGER, 3)
         tokens = agentspeak.lexer.TokenStream(source, log)
         ast_agent = agentspeak.parser.parse(source.name, tokens, log)
@@ -884,7 +872,6 @@ class Environment:
             if not more_work:
                 # Sleep until the next deadline.
                 wait_until = agent.shortest_deadline()
-                print("Waiting until", wait_until)
                 if wait_until:
                     time.sleep(wait_until - self.time())
                     more_work = True
@@ -912,7 +899,7 @@ def noop(agent, intention):
     return True
 
 
-def add_belief(term, agent, intention):
+def add_belief(term, agent, intention): 
     return agent.call(agentspeak.Trigger.addition, agentspeak.GoalType.belief, term, intention)
 
 
@@ -933,15 +920,13 @@ def call_delayed(trigger, goal_type, term, agent, intention):
 
 
 def push_query(query, agent, intention):
-    intention.query_stack.append(query.execute(agent, intention))    
-    print("push_query", intention.query_stack)
+    intention.query_stack.append(query.execute(agent, intention))  
     return True
 
 
 def next_or_fail(agent, intention):
     try:
         next(intention.query_stack[-1])
-        print("next", intention.query_stack[-1])
         return True
     except StopIteration:
         return False
@@ -956,8 +941,6 @@ def push_choicepoint(agent, intention):
     choicepoint = object()
     intention.choicepoint_stack.append(choicepoint)
     intention.stack.append(choicepoint)
-    print("push", intention.choicepoint_stack)
-    print("stack", intention.stack)
 
     return True
 
@@ -1166,7 +1149,7 @@ def main(post_repl=True):
             for arg in args:
                 with open(arg) as source:
                     agent = env.build_agent(source, agentspeak.ext_stdlib.actions)
-                    env.run_agent(agent)
+                    env.F_agent(agent)
                     if post_repl:
                         repl(agent, env, agentspeak.ext_stdlib.actions)
                     break

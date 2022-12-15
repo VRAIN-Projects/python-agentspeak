@@ -3,6 +3,7 @@
 import agentspeak
 import agentspeak.runtime
 import agentspeak.stdlib
+import agentspeak.affective_agent
 
 import os
 

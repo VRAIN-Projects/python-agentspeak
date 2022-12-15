@@ -935,6 +935,7 @@ def parse_plan(tok, tokens, log):
             plan.dicts_annotations = dict_annotations 
         
     tok, event = parse_event(tok, tokens, log)
+    print("Addition of the event", event)
     plan.event = event
     plan.loc = event.loc
 
