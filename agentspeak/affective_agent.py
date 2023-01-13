@@ -1,5 +1,5 @@
 from __future__ import print_function
-
+from typing import Union, Tuple
 import sys
 import collections
 import copy
@@ -21,34 +21,117 @@ LOGGER = agentspeak.get_logger(__name__)
 
 
 class AffectiveAgent(agentspeak.runtime.Agent):
-    def __init__(self, *args, **kwargs):
-        super(AffectiveAgent, self).__init__(*args, **kwargs)
-        self.current_step = ""
-        print("ESTO ES UN AGENTE AFECTIVO")
+    """
+    This class is a subclass of the Agent class. 
+    It is used to add the affective layer to the agent.
+    """
+    def __init__(self, env: agentspeak.runtime.Environment, name: str, beliefs = None, rules = None, plans = None):
+        """
+        Constructor of the AffectiveAgent class.
         
-    def add_rule(self, rule):
+        :param env: Environment of the agent.
+        :param name: Name of the agent.
+        :param beliefs: Beliefs of the agent.
+        :param rules: Rules of the agent.
+        :param plans: Plans of the agent.
+        
+        We initialize the intentions queue and the current step.
+        """
+        self.env = env
+        self.name = name
+
+        self.beliefs = collections.defaultdict(lambda: set()) if beliefs is None else beliefs
+        self.rules = collections.defaultdict(lambda: []) if rules is None else rules
+        self.plans = collections.defaultdict(lambda: []) if plans is None else plans
+
+        self.intentions = collections.deque()
+        
+        self.current_step = ""
+        
+    def add_rule(self, rule: agentspeak.runtime.Rule):
+        """
+        This method is used to add a rule to the agent.
+
+        Args:
+            rule (agentspeak.runtime.Rule): Rule to add.
+        """
         print("AÑADIENDO REGLA")
         print(rule)
         super(AffectiveAgent, self).add_rule(rule)
     
-    def add_plan(self, plan):
+    def add_plan(self, plan: agentspeak.runtime.Plan):
+        """
+        This method is used to add a plan to the agent.
+        
+        Args:
+            plan (agentspeak.runtime.Plan): Plan to add.
+        """
         print(self.name,"AÑADIENDO PLAN: ",agentspeak.runtime.plan_to_str(plan))
         super(AffectiveAgent, self).add_plan(plan)
         
-    def add_belief(self, term, scope):
-        print(self.name,"AddIm: ",term)
-        self.current_step = "AddIm"
+    def add_belief(self, term: agentspeak.Literal, scope: dict):
+        """This method is used to add a belief to the agent.
+
+        Args:
+            term (agentspeak.Literal): Belief to add.
+            scope (dict): Dict with the scopes of each term.
+        """
+        print(self.name,"AÑADIENDO BELIEF: ",term)
         super(AffectiveAgent, self).add_belief(term, scope)
         
-    def test_belief(self, term, intention):
+    def test_belief(self, term: agentspeak.Literal, intention: agentspeak.runtime.Intention):
+        """
+        This method is used to test a belief of the agent.
+
+        Args:
+            term (agentspeak.Literal): Belief to test.
+            intention (agentspeak.runtime.Intention): Intention of the agent.
+        """
         print(self.name,"TESTEANDO CREENCIA: ",term)
         super(AffectiveAgent, self).test_belief(term, intention)
     
-    def remove_belief(self, term, intention):
+    def remove_belief(self, term: agentspeak.Literal, intention: agentspeak.runtime.Intention) -> None:
+        """
+        This method is used to remove a belief of the agent.
+
+        Args:
+            term (agentspeak.Literal): Belief to remove.
+            intention (agentspeak.runtime.Intention): Intention of the agent.
+        """
         print(self.name,"BORRANDO CREENCIA: ",term)
         super(AffectiveAgent, self).remove_belief(term, intention)
         
-    def call(self, trigger, goal_type, term, calling_intention, delayed=False):
+    def call(self, trigger: agentspeak.Trigger, goal_type:agentspeak.GoalType, term: agentspeak.Literal, calling_intention: agentspeak.runtime.Intention, delayed: bool = False):
+        """ This method is used to call an event.
+
+        Args:
+            trigger (agentspeak.Trigger): Trigger of the event.
+            goal_type (agentspeak.GoalType): Type of the event.
+            term (agentspeak.Literal): Term of the event.
+            calling_intention (agentspeak.runtime.Intention): Intention of the agent.
+            delayed (bool, optional): Delayed event. Defaults to False.
+
+        Raises:
+            AslError: "expected literal" if the term is not a literal.
+            AslError: "expected literal term" if the term is not a literal term.
+            AslError: "no applicable plan for" + str(term)" if there is no applicable plan for the term.
+            log.error: "expected end of plan" if the plan is not finished. The plan finish with a ".".
+
+        Returns:
+            bool: True if the event is called.
+        
+        If the event is a belief, we add or remove it.
+        
+        If the event is a goal addition, we add it to the intentions queue.
+        
+        If the event is a goal deletion, we remove it from the intentions queue.
+        
+        If the event is a tellHow addition, we tell the agent how to do it.
+        
+        If the event is a tellHow deletion, we remove the tellHow from the agent.
+        
+        If the event is a askHow addition, we ask the agent how to do it.
+        """
         print(self.name, "We are in the event: ", term.functor)
         # Modify beliefs.        
         if goal_type == agentspeak.GoalType.belief: 
@@ -83,35 +166,25 @@ class AffectiveAgent(agentspeak.runtime.Agent):
 
         # If the goal is an achievement and the trigger is an addition, then the agent will add the goal to his list of intentions
         if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.addition:
+            
+            # RelPlan (remove if want to use directly the applicable plans)
+            RelPl = self.applyRelPl(trigger, goal_type, term, calling_intention, delayed, frozen)
 
-            print(self.name, "RelPl", frozen.functor)
-            self.current_step = "RelPl"
-            applicable_plans = self.plans[(trigger, goal_type, frozen.functor, len(frozen.args))] 
+            print(self.name, "ApplPl", frozen.functor)
+            self.current_step = "ApplPl"
+            #applicable_plans = self.applyAppPl(trigger, goal_type, term, calling_intention, delayed, frozen)
+            applicable_plans = self.applyAppPl(trigger, goal_type, term, calling_intention, delayed, frozen, RelPl)
             intention = agentspeak.runtime.Intention()
 
-            # Find matching plan.
-            for plan in applicable_plans: 
-                for _ in agentspeak.unify_annotated(plan.head, frozen, intention.scope, intention.stack): 
-                    for _ in plan.context.execute(self, intention): 
-                        print(self.name, "ApplPl", frozen.functor)
-                        self.current_step = "ApplPl"
-                        # Here we can implement the SelAppPl algorithm to select the plan to be applied
-                        # self.current_step = "SelAppPl"
-                        intention.head_term = frozen 
-                        intention.instr = plan.body 
-                        intention.calling_term = term 
-
-                        if not delayed and self.intentions: 
-                            for intention_stack in self.intentions: 
-                                if intention_stack[-1] == calling_intention: 
-                                    intention_stack.append(intention) 
-                                    return True
-
-                        new_intention_stack = collections.deque() 
-                        new_intention_stack.append(intention) 
-                        self.intentions.append(new_intention_stack) 
-                        return True
-
+            self.current_step = "SelAppPl"
+            plan = self.applySelAppl(trigger, goal_type, term, calling_intention, delayed, frozen, applicable_plans, intention)
+            print(self.name, "SelAppPl", plan)
+            if plan is not None:
+                print(self.name, "AddIm", plan) 
+                self.current_step = "AddIm"
+                self.applyAddIM(intention, plan, calling_intention, delayed, frozen, term)
+                return True
+           
         if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.addition: 
             raise AslError("no applicable plan for %s%s%s/%d" % (
                 trigger.value, goal_type.value, frozen.functor, len(frozen.args))) 
@@ -205,10 +278,144 @@ class AffectiveAgent(agentspeak.runtime.Agent):
 
         return True 
     
-    def step(self):
-        
-        print(self.name, "CtlInt", self.intentions)
-        self.current_step = "CtlInt"
+    def applyRelPl(self, trigger : agentspeak.Trigger, goal_type : agentspeak.GoalType, term : agentspeak.Literal, calling_intention : agentspeak.runtime.Intention, delayed : bool, frozen : agentspeak.Literal) -> collections.defaultdict:
+        """
+        This method is used to find the plans that are related to the goal received as parameter.
+        We say that a plan is related to a goal if both have the same functor
+
+        Args:
+            trigger (agentspeak.Trigger): Trigger of the goal
+            goal_type (agentspeak.GoalType): Type of the goal
+            term (agentspeak.Literal): Goal received as parameter
+            calling_intention (agentspeak.runtime.Intention): Calling intention of the goal
+            delayed (bool): True if the goal is delayed, False otherwise
+            frozen (agentspeak.Literal): Frozen goal 
+
+        Returns:
+            collections.defaultdict: Dictionary with the plans related to the goal
+        """
+        RelPlan = collections.defaultdict(lambda: [])
+        plans = self.plans.values()
+        for plan in plans:
+            for differents in plan:
+                strplan = agentspeak.runtime.plan_to_str(differents)
+                if term.functor in strplan.split(":")[0]:
+                    RelPlan[(differents.trigger, differents.goal_type, differents.head.functor, len(differents.head.args))].append(differents)
+        return RelPlan
+    
+    def applyAppPl(self, trigger: agentspeak.Trigger, goal_type: agentspeak.GoalType, term: agentspeak.Literal, calling_intention: agentspeak.runtime.Intention, delayed: bool, frozen: agentspeak.Literal, applicable_plans: collections.defaultdict) -> collections.defaultdict:
+        """
+        This method is used to find the plans that are applicable to the goal received as parameter.
+        We say that a plan is applicable to a goal if both have the same functor, the same number of arguments and the context are satisfied
+
+        Args:
+            trigger (agentspeak.Trigger): Trigger of the goal
+            goal_type (agentspeak.GoalType): Type of the goal
+            term (agentspeak.Literal): Goal received as parameter
+            calling_intention (agentspeak.runtime.Intention): Calling intention of the goal
+            delayed (bool): True if the goal is delayed, False otherwise
+            frozen (agentspeak.Literal): Frozen goal
+            applicable_plans (collections.defaultdict): Dictionary with the plans related to the goal
+
+        Returns:
+            collections.defaultdict: Dictionary with the plans applicable to the goal 
+        """
+        return applicable_plans[(trigger, goal_type, frozen.functor, len(frozen.args))] 
+    
+    def applySelAppl(self, trigger: agentspeak.Trigger, goal_type: agentspeak.GoalType, term: agentspeak.Literal, calling_intention: agentspeak.runtime.Intention, delayed: bool, frozen: agentspeak.Literal, applicable_plans: collections.defaultdict, intention: agentspeak.runtime.Intention) -> agentspeak.runtime.Plan:
+        """ 
+        This method is used to select the plan that is applicable to the goal received as parameter.
+        We say that a plan is applicable to a goal if both have the same functor, the same number of arguments and the context are satisfied
+        We select the first plan that is applicable to the goal in the dict of applicable plans
+
+        Args:
+            trigger (agentspeak.Trigger): Trigger of the goal
+            goal_type (agentspeak.GoalType): Type of the goal
+            term (agentspeak.Literal): Goal received as parameter
+            calling_intention (agentspeak.runtime.Intention): Calling intention of the goal
+            delayed (bool): True if the goal is delayed, False otherwise
+            frozen (agentspeak.Literal): Frozen goal
+            applicable_plans (collections.defaultdict): Dictionary with the plans related to the goal
+            intention (agentspeak.runtime.Intention): Intention of the goal
+
+        Returns:
+            agentspeak.runtime.Plan: Plan selected for achieving the goal
+        """
+        for plan in applicable_plans: 
+                for _ in agentspeak.unify_annotated(plan.head, frozen, intention.scope, intention.stack): 
+                    for _ in plan.context.execute(self, intention):   
+                        return plan
+    def applyAddIM(self, intention: agentspeak.runtime.Intention, plan: agentspeak.runtime.Plan, calling_intention: agentspeak.runtime.Intention, delayed: bool, frozen: agentspeak.Literal, term: agentspeak.Literal) -> bool:
+        """
+        This method is used to add the intention to the intention stack of the agent
+
+        Args:
+            intention (agentspeak.runtime.Intention): Intention of the agent
+            plan (agentspeak.runtime.Plan): Plan selected for achieving the goal
+            calling_intention (agentspeak.runtime.Intention): Calling intention of the goal
+            delayed (bool): True if the goal is delayed, False otherwise
+            frozen (agentspeak.Literal): Frozen goal
+            term (agentspeak.Literal): Goal received as parameter
+
+        Returns:
+            bool: True if the intention is added to the intention stack
+        """
+        intention.head_term = frozen 
+        intention.instr = plan.body 
+        intention.calling_term = term 
+
+        if not delayed and self.intentions: 
+            for intention_stack in self.intentions: 
+                if intention_stack[-1] == calling_intention: 
+                    intention_stack.append(intention) 
+                    return True
+        new_intention_stack = collections.deque() 
+        new_intention_stack.append(intention) 
+        self.intentions.append(new_intention_stack) 
+        return True      
+    
+    def step(self) -> bool:
+        """
+        This method is used to execute the agent's intentions
+
+        Raises:
+            log.error: If the agent has no intentions
+            log.exception: If the agent raises a python exception
+
+        Returns:
+            true: If the agent has no intentions
+        """
+        self.current_step = "SelInt"
+        selected = self.applySelInt() #intention, instr
+        if isinstance(selected, bool):
+            return selected
+        else:
+            intention, instr = selected
+        print(self.name, "SelInt", str(intention))
+        try: 
+            print(self.name, "ExecInt", instr)
+            self.current_step = "ExecInt"
+            self.applyExecInt(intention, instr)
+        except AslError as err:
+            log = agentspeak.Log(LOGGER)
+            raise log.error("%s", err, loc=instr.loc, extra_locs=instr.extra_locs)
+        except Exception as err:
+            log = agentspeak.Log(LOGGER)
+            raise log.exception("agent %r raised python exception: %r", self.name, err,
+                                loc=instr.loc, extra_locs=instr.extra_locs)
+
+        return True
+
+    def applySelInt(self) -> Union[bool, Tuple[agentspeak.runtime.Intention, agentspeak.runtime.Instruction]]:
+        """
+        This method is used to select the intention to execute
+
+        Raises:
+            RuntimeError:  If the agent has no intentions
+
+        Returns:
+            Union[bool, Tuple[agentspeak.runtime.Intention, agentspeak.runtime.Instruction]]: If the agent has no intentions, return False. Otherwise, return the intention and the instruction to execute
+        """
         while self.intentions and not self.intentions[0]: # while self.intentions is not empty and the first element of self.intentions is empty
             self.intentions.popleft() # remove the first element of self.intentions
 
@@ -226,7 +433,6 @@ class AffectiveAgent(agentspeak.runtime.Agent):
                     intention.waiter = None
                 else:
                     continue
-
             break
         else:
             return False
@@ -249,29 +455,37 @@ class AffectiveAgent(agentspeak.runtime.Agent):
                 if not agentspeak.unify(intention.calling_term, frozen, calling_intention.scope, calling_intention.stack):
                     raise RuntimeError("back unification failed")
             return True
+        
+        return (intention, instr)
+    
+    def applyExecInt(self, intention: agentspeak.runtime.Intention, instr: agentspeak.runtime.Instruction) -> None:
+        """
+        This method is used to execute the instruction
 
-        try: 
-            print(self.name, "SelInt", str(intention))
-            self.current_step = "SelInt"
-            if instr.f(self, intention): # If the instruction is true
-                print(self.name, "ExecInt", instr)
-                self.current_step = "ExecInt"
-                intention.instr = instr.success # We set the intention.instr to the instr.success
-            else:
-                intention.instr = instr.failure # We set the intention.instr to the instr.failure
-                if not intention.instr: # If there is no instr.failure
-                    raise AslError("plan failure") # We raise an error
-        except AslError as err:
-            log = agentspeak.Log(LOGGER)
-            raise log.error("%s", err, loc=instr.loc, extra_locs=instr.extra_locs)
-        except Exception as err:
-            log = agentspeak.Log(LOGGER)
-            raise log.exception("agent %r raised python exception: %r", self.name, err,
-                                loc=instr.loc, extra_locs=instr.extra_locs)
+        Args:
+            intention (agentspeak.runtime.Intention): Intention of the agent
+            instr (agentspeak.runtime.Instruction): Instruction to execute
 
-        return True
-
-    def run(self):
+        Raises:
+            AslError: If the plan fails
+        """
+        if instr.f(self, intention): # If the instruction is true
+            # self.current_step = "CtlInt" ¿?
+            intention.instr = instr.success # We set the intention.instr to the instr.success
+        else:
+            intention.instr = instr.failure # We set the intention.instr to the instr.failure
+            if not intention.instr: # If there is no instr.failure
+                raise AslError("plan failure") # We raise an error
+    
+    def applyCtlInt(self) -> None:
+        """
+        This method is used to control the intention (Not implemented)
+        """
+        pass
+    def run(self) -> None:
+        """
+        This method is used to run the step cycle of the agent
+        """
         print("Running agent", self.name)
         while self.step():
             pass

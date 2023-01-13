@@ -602,7 +602,7 @@ class Agent:
         return strplans
 
     def add_belief(self, term, scope):
-        term = term.grounded(scope)
+        term = term.grounded(scope) 
 
         if term.functor is None:
             raise AslError("expected belief literal")
@@ -697,6 +697,7 @@ class Agent:
             return True
 
         try: 
+            print(type(instr))
             if instr.f(self, intention): # If the instruction is true
                 intention.instr = instr.success # We set the intention.instr to the instr.success
             else:
@@ -802,13 +803,14 @@ class Environment:
 
             
             agent.add_plan(plan)
-
+        
         # Add beliefs to agent prototype.
         for ast_belief in ast_agent.beliefs:
             belief = ast_belief.accept(BuildTermVisitor({}))
             agent.call(agentspeak.Trigger.addition, agentspeak.GoalType.belief,
                        belief, Intention(), delayed=True)
 
+        
         # Call initial goals on agent prototype.
         for ast_goal in ast_agent.goals:
             term = ast_goal.atom.accept(BuildTermVisitor({}))

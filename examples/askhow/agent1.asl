@@ -12,5 +12,6 @@ me(100).
         !hello;
         -me(100);
         !hello;
+        +me(100);
         !hello
 .
