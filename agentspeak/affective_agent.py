@@ -47,6 +47,8 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         self.intentions = collections.deque()
         
         self.current_step = ""
+        self.T = {}
+        
         
     def add_rule(self, rule: agentspeak.runtime.Rule):
         """
@@ -166,23 +168,26 @@ class AffectiveAgent(agentspeak.runtime.Agent):
 
         # If the goal is an achievement and the trigger is an addition, then the agent will add the goal to his list of intentions
         if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.addition:
-            
+            self.T["e"] = term
+            self.frozen = agentspeak.freeze(term, calling_intention.scope, {}) 
             # RelPlan (remove if want to use directly the applicable plans)
-            RelPl = self.applyRelPl(trigger, goal_type, term, calling_intention, delayed, frozen)
+            RelPl = self.applyRelPl()
 
             print(self.name, "ApplPl", frozen.functor)
             self.current_step = "ApplPl"
             #applicable_plans = self.applyAppPl(trigger, goal_type, term, calling_intention, delayed, frozen)
-            applicable_plans = self.applyAppPl(trigger, goal_type, term, calling_intention, delayed, frozen, RelPl)
-            intention = agentspeak.runtime.Intention()
+            applicable_plans = self.applyAppPl()
+            self.T["i"] = agentspeak.runtime.Intention()
 
             self.current_step = "SelAppPl"
-            plan = self.applySelAppl(trigger, goal_type, term, calling_intention, delayed, frozen, applicable_plans, intention)
+            plan = self.applySelAppl()
             print(self.name, "SelAppPl", plan)
             if plan is not None:
                 print(self.name, "AddIm", plan) 
                 self.current_step = "AddIm"
-                self.applyAddIM(intention, plan, calling_intention, delayed, frozen, term)
+                self.delayed = delayed
+                self.calling_intention = calling_intention
+                self.applyAddIM()
                 return True
            
         if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.addition: 
@@ -278,7 +283,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
 
         return True 
     
-    def applyRelPl(self, trigger : agentspeak.Trigger, goal_type : agentspeak.GoalType, term : agentspeak.Literal, calling_intention : agentspeak.runtime.Intention, delayed : bool, frozen : agentspeak.Literal) -> collections.defaultdict:
+    def applyRelPl(self) -> collections.defaultdict:
         """
         This method is used to find the plans that are related to the goal received as parameter.
         We say that a plan is related to a goal if both have the same functor
@@ -299,11 +304,15 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         for plan in plans:
             for differents in plan:
                 strplan = agentspeak.runtime.plan_to_str(differents)
-                if term.functor in strplan.split(":")[0]:
+                if self.T["e"].functor in strplan.split(":")[0]:
                     RelPlan[(differents.trigger, differents.goal_type, differents.head.functor, len(differents.head.args))].append(differents)
+         
+        if not RelPlan:
+            return False
+        self.T["R"] = RelPlan
         return RelPlan
     
-    def applyAppPl(self, trigger: agentspeak.Trigger, goal_type: agentspeak.GoalType, term: agentspeak.Literal, calling_intention: agentspeak.runtime.Intention, delayed: bool, frozen: agentspeak.Literal, applicable_plans: collections.defaultdict) -> collections.defaultdict:
+    def applyAppPl(self) -> collections.defaultdict:
         """
         This method is used to find the plans that are applicable to the goal received as parameter.
         We say that a plan is applicable to a goal if both have the same functor, the same number of arguments and the context are satisfied
@@ -320,9 +329,10 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         Returns:
             collections.defaultdict: Dictionary with the plans applicable to the goal 
         """
-        return applicable_plans[(trigger, goal_type, frozen.functor, len(frozen.args))] 
+        self.T["Ap"] = self.T["R"][(agentspeak.Trigger.addition, agentspeak.GoalType.achievement, self.frozen.functor, len(self.frozen.args))] 
+        return self.T["Ap"] 
     
-    def applySelAppl(self, trigger: agentspeak.Trigger, goal_type: agentspeak.GoalType, term: agentspeak.Literal, calling_intention: agentspeak.runtime.Intention, delayed: bool, frozen: agentspeak.Literal, applicable_plans: collections.defaultdict, intention: agentspeak.runtime.Intention) -> agentspeak.runtime.Plan:
+    def applySelAppl(self) -> agentspeak.runtime.Plan:
         """ 
         This method is used to select the plan that is applicable to the goal received as parameter.
         We say that a plan is applicable to a goal if both have the same functor, the same number of arguments and the context are satisfied
@@ -341,11 +351,12 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         Returns:
             agentspeak.runtime.Plan: Plan selected for achieving the goal
         """
-        for plan in applicable_plans: 
-                for _ in agentspeak.unify_annotated(plan.head, frozen, intention.scope, intention.stack): 
-                    for _ in plan.context.execute(self, intention):   
+        for plan in self.T["Ap"]: 
+                for _ in agentspeak.unify_annotated(plan.head, self.frozen, self.T["i"].scope, self.T["i"].stack): 
+                    for _ in plan.context.execute(self, self.T["i"]):   
+                        self.T["p"] = plan
                         return plan
-    def applyAddIM(self, intention: agentspeak.runtime.Intention, plan: agentspeak.runtime.Plan, calling_intention: agentspeak.runtime.Intention, delayed: bool, frozen: agentspeak.Literal, term: agentspeak.Literal) -> bool:
+    def applyAddIM(self) -> bool:
         """
         This method is used to add the intention to the intention stack of the agent
 
@@ -360,17 +371,17 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         Returns:
             bool: True if the intention is added to the intention stack
         """
-        intention.head_term = frozen 
-        intention.instr = plan.body 
-        intention.calling_term = term 
+        self.T["i"].head_term = self.frozen 
+        self.T["i"].instr = self.T["p"].body 
+        self.T["i"].calling_term = self.T["e"] 
 
-        if not delayed and self.intentions: 
+        if not self.delayed and self.intentions: 
             for intention_stack in self.intentions: 
-                if intention_stack[-1] == calling_intention: 
-                    intention_stack.append(intention) 
+                if intention_stack[-1] == self.delayed: 
+                    intention_stack.append(self.T["i"]) 
                     return True
         new_intention_stack = collections.deque() 
-        new_intention_stack.append(intention) 
+        new_intention_stack.append(self.T["i"]) 
         self.intentions.append(new_intention_stack) 
         return True      
     
@@ -391,11 +402,12 @@ class AffectiveAgent(agentspeak.runtime.Agent):
             return selected
         else:
             intention, instr = selected
+            self.intention_selected = intention
         print(self.name, "SelInt", str(intention))
         try: 
             print(self.name, "ExecInt", instr)
             self.current_step = "ExecInt"
-            self.applyExecInt(intention, instr)
+            self.applyExecInt()
         except AslError as err:
             log = agentspeak.Log(LOGGER)
             raise log.error("%s", err, loc=instr.loc, extra_locs=instr.extra_locs)
@@ -458,7 +470,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         
         return (intention, instr)
     
-    def applyExecInt(self, intention: agentspeak.runtime.Intention, instr: agentspeak.runtime.Instruction) -> None:
+    def applyExecInt(self) -> None:
         """
         This method is used to execute the instruction
 
@@ -469,13 +481,23 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         Raises:
             AslError: If the plan fails
         """
-        if instr.f(self, intention): # If the instruction is true
+        if self.intention_selected.instr.f(self, self.intention_selected): # If the instruction is true
             # self.current_step = "CtlInt" ¿?
-            intention.instr = instr.success # We set the intention.instr to the instr.success
+            self.intention_selected.instr = self.intention_selected.instr.success # We set the intention.instr to the instr.success
         else:
-            intention.instr = instr.failure # We set the intention.instr to the instr.failure
-            if not intention.instr: # If there is no instr.failure
+            self.intention_selected.instr = self.intention_selected.instr.failure # We set the intention.instr to the instr.failure
+            if not self.T["i"].instr: # If there is no instr.failure
                 raise AslError("plan failure") # We raise an error
+    
+    def applySemanticRuleSense(self, ast_agent):
+        self.current_step = "SelEv"
+        for ast_goal in ast_agent.goals:
+            self.term = ast_goal.atom.accept(agentspeak.runtime.BuildTermVisitor({}))
+            self.T["calling_intention"] = agentspeak.runtime.Intention()
+            self.T["delayed"] = True
+            self.applySemanticRuleDeliberate()
+            #self.call(agentspeak.Trigger.addition, agentspeak.GoalType.achievement, self.term, agentspeak.runtime.Intention(), delayed=True)
+        pass
     
     def applyCtlInt(self) -> None:
         """
