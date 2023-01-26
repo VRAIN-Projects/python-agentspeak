@@ -20,6 +20,7 @@ from agentspeak import UnaryOp, BinaryOp, AslError, asl_str
 LOGGER = agentspeak.get_logger(__name__)
 
 C = {}
+C["I"] = collections.deque()
 
 class AffectiveAgent(agentspeak.runtime.Agent):
     """
@@ -46,7 +47,6 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         self.rules = collections.defaultdict(lambda: []) if rules is None else rules
         self.plans = collections.defaultdict(lambda: []) if plans is None else plans
 
-        self.intentions = collections.deque()
         
         self.current_step = ""
         self.T = {}
@@ -146,7 +146,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
             raise AslError("expected literal") 
 
         # Wake up waiting intentions.
-        for intention_stack in self.intentions: 
+        for intention_stack in C["I"]: 
             if not intention_stack: 
                 continue 
             intention = intention_stack[-1] 
@@ -183,7 +183,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
                 raise AslError("expected literal term") 
 
             # Remove a intention passed by the parameters.
-            for intention_stack in self.intentions: 
+            for intention_stack in C["I"]: 
                 if not intention_stack: 
                     continue 
 
@@ -342,16 +342,16 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         self.T["i"].instr = self.T["p"].body 
         self.T["i"].calling_term = self.T["e"] 
 
-        if not self.delayed and self.intentions: 
-            for intention_stack in self.intentions: 
+        if not self.delayed and C["I"]: 
+            for intention_stack in C["I"]: 
                 if intention_stack[-1] == self.delayed: 
                     intention_stack.append(self.T["i"]) 
                     return True
         new_intention_stack = collections.deque() 
         new_intention_stack.append(self.T["i"]) 
-        self.intentions.append(new_intention_stack) 
+        C["I"].append(new_intention_stack) 
         C["E"] = [self.T["e"]] if "E" not in C else C["E"] + [self.T["e"]]
-        C["I"] = [(self.T["i"].head_term,self.T["i"])] if "I" not in C else C["I"] + [(self.T["i"].head_term,self.T["i"])]
+        #C["I"] = [(self.T["i"].head_term,self.T["i"])] if "I" not in C else C["I"] + [(self.T["i"].head_term,self.T["i"])]
         print(C)
         self.current_step = "SelInt"
         return True      
@@ -407,10 +407,10 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         Returns:
             bool: True if the agent has intentions, False otherwise
         """
-        while self.intentions and not self.intentions[0]: 
-            self.intentions.popleft() 
+        while C["I"] and not C["I"][0]: 
+            C["I"].popleft() 
 
-        for intention_stack in self.intentions: 
+        for intention_stack in C["I"]: 
             if not intention_stack:
                 continue
             intention = intention_stack[-1]
@@ -470,7 +470,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         """
         self.intention_stack.pop() 
         if not self.intention_stack:
-            self.intentions.remove(self.intention_stack) 
+            C["I"].remove(self.intention_stack) 
         elif self.intention_selected.calling_term:
             frozen = self.intention_selected.head_term.freeze(self.intention_selected.scope, {})
             
@@ -486,6 +486,9 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         self.current_step = "SelInt"
         while self.step():
             pass
+    def waiters(self):
+        return (intention[-1].waiter for intention in C["I"]
+                if intention and intention[-1].waiter)
 
 
 class Environment(agentspeak.runtime.Environment):
