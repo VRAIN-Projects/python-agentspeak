@@ -935,7 +935,6 @@ class Actions(object):
                 assert (functor, arity) not in self.actions, "%s/%d already exists" % (functor, arity)
                 self.actions[(functor, arity)] = f
             return f
-
         if f is None:
             return _add
         else:

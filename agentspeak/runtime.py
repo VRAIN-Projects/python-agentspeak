@@ -34,7 +34,6 @@ import agentspeak.util
 from agentspeak import UnaryOp, BinaryOp, AslError, asl_str
 #from build.lib.agentspeak.lexer import TokenType
 
-
 LOGGER = agentspeak.get_logger(__name__)
 
 
@@ -104,7 +103,13 @@ class BuildQueryVisitor:
         try:
             arity = len(ast_literal.terms)
             action_impl = self.actions.lookup(ast_literal.functor, arity)
-            
+            #global C
+            try:
+                C["A"] = (term, action_impl)
+            except:
+                print("C is not defined")
+                C = {"A": (term, action_impl)}
+            print(C)
             return ActionQuery(term, action_impl)
         except KeyError:
             if "." in ast_literal.functor:

@@ -3,11 +3,12 @@
 import agentspeak
 import agentspeak.runtime
 import agentspeak.stdlib
+import agentspeak.affective_agent
 
 import os
 
 
-env = agentspeak.runtime.Environment()
+env = agentspeak.affective_agent.Environment()
 
 with open(os.path.join(os.path.dirname(__file__), "agent2.asl")) as source:
     agents = env.build_agents(source, 1, agentspeak.stdlib.actions)
