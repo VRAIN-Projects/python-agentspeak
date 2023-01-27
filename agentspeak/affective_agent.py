@@ -1,5 +1,6 @@
 from __future__ import print_function
-from typing import Union, Tuple
+from typing import Union, Tuple, Iterator
+
 import sys
 import collections
 import copy
@@ -18,9 +19,7 @@ from agentspeak import UnaryOp, BinaryOp, AslError, asl_str
 
 
 LOGGER = agentspeak.get_logger(__name__)
-
 C = {}
-C["I"] = collections.deque()
 
 class AffectiveAgent(agentspeak.runtime.Agent):
     """
@@ -38,7 +37,21 @@ class AffectiveAgent(agentspeak.runtime.Agent):
             rules (dict): Rules of the agent.
             plans (dict): Plans of the agent.
         
-        We initialize the intentions queue.
+        Attributes:
+            env (agentspeak.runtime.Environment): Environment of the agent.
+            name (str): Name of the agent.
+            beliefs (dict): Beliefs of the agent.
+            rules (dict): Rules of the agent.
+            plans (dict): Plans of the agent.
+            current_step (str): Current step of the agent.
+            T (dict): is the temporary information of the current 
+            rational cycle consisting of a dictionary containing:
+                - "p": Applicable plan.
+                - "Ap": Applicable plans.
+                - "i": Intention.
+                - "R": Relevant plans.
+                - "e": Event.
+             
         """
         self.env = env
         self.name = name
@@ -50,6 +63,10 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         
         self.current_step = ""
         self.T = {}
+        
+        # Circunstance initialization
+        self.C = {}
+        self.C["I"] = collections.deque()
         
         
     def add_rule(self, rule: agentspeak.runtime.Rule):
@@ -120,7 +137,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         
         If the event is a belief, we add or remove it.
         
-        If the event is a goal addition, we add it to the intentions queue.
+        If the event is a goal addition, we start the reasoning cycle.
         
         If the event is a goal deletion, we remove it from the intentions queue.
         
@@ -146,7 +163,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
             raise AslError("expected literal") 
 
         # Wake up waiting intentions.
-        for intention_stack in C["I"]: 
+        for intention_stack in self.C["I"]: 
             if not intention_stack: 
                 continue 
             intention = intention_stack[-1] 
@@ -183,7 +200,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
                 raise AslError("expected literal term") 
 
             # Remove a intention passed by the parameters.
-            for intention_stack in C["I"]: 
+            for intention_stack in self.C["I"]: 
                 if not intention_stack: 
                     continue 
 
@@ -269,7 +286,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         This method is used to select the event that will be executed in the next step
 
         Returns:
-            bool: True if the event was selected, False otherwise
+            bool: True if the event was selected
         """
         self.term = self.ast_goal.atom.accept(BuildTermVisitor({}))
         self.T["e"] = self.term
@@ -281,11 +298,14 @@ class AffectiveAgent(agentspeak.runtime.Agent):
     
     def applyRelPl(self) -> bool:
         """
-        This method is used to find the plans that are related to the goal received as parameter.
+        This method is used to find the plans that are related to the current goal.
         We say that a plan is related to a goal if both have the same functor
 
         Returns:
             bool: True if the plans were found, False otherwise
+            
+        - If the plans were found, the dictionary T["R"] will be filled with the plans found and the current step will be changed to "AppPl"
+        - If not plans were found, the current step will be changed to "SelEv" to select a new event
         """
         RelPlan = collections.defaultdict(lambda: [])
         plans = self.plans.values()
@@ -304,11 +324,15 @@ class AffectiveAgent(agentspeak.runtime.Agent):
     
     def applyAppPl(self) -> bool:
         """
-        This method is used to find the plans that are applicable to the goal received as parameter.
-        We say that a plan is applicable to a goal if both have the same functor, the same number of arguments and the context are satisfied
+        This method is used to find the plans that are applicable to the current goal.
+        We say that a plan is applicable to a goal if both have the same functor, 
+        the same number of arguments and the context are satisfied
 
         Returns:
             bool: True if the plans were found, False otherwise
+        
+        - If the plans were found, the dictionary T["Ap"] will be filled with the plans found and the current step will be changed to "SelAppl"
+        - If not plans were found, return False
         """
         self.T["Ap"] = self.T["R"][(agentspeak.Trigger.addition, agentspeak.GoalType.achievement, self.frozen.functor, len(self.frozen.args))] 
         self.current_step = "SelAppl"
@@ -316,12 +340,18 @@ class AffectiveAgent(agentspeak.runtime.Agent):
     
     def applySelAppl(self) -> bool:
         """ 
-        This method is used to select the plan that is applicable to the goal received as parameter.
-        We say that a plan is applicable to a goal if both have the same functor, the same number of arguments and the context are satisfied
-        We select the first plan that is applicable to the goal in the dict of applicable plans
+        This method is used to select the plan that is applicable to the current goal.
+        We say that a plan is applicable to a goal if both have the same functor, 
+        the same number of arguments and the context are satisfied 
+        
+        We select the first plan that is applicable to the goal in the dict of 
+        applicable plans
 
         Returns:
             bool: True if the plan was found, False otherwise
+            
+        - If the plan was found, the dictionary T["p"] will be filled with the plan found and the current step will be changed to "AddIM"
+        - If not plan was found, return False
         """
         for plan in self.T["Ap"]: 
                 for _ in agentspeak.unify_annotated(plan.head, self.frozen, self.T["i"].scope, self.T["i"].stack): 
@@ -337,26 +367,38 @@ class AffectiveAgent(agentspeak.runtime.Agent):
 
         Returns:
             bool: True if the intention is added to the intention stack
+        
+        - When  the intention is added to the intention stack, the current step will be changed to "SelEv"
         """
         self.T["i"].head_term = self.frozen 
         self.T["i"].instr = self.T["p"].body 
         self.T["i"].calling_term = self.T["e"] 
 
-        if not self.delayed and C["I"]: 
-            for intention_stack in C["I"]: 
+        if not self.delayed and self.C["I"]: 
+            for intention_stack in self.C["I"]: 
                 if intention_stack[-1] == self.delayed: 
                     intention_stack.append(self.T["i"]) 
                     return True
         new_intention_stack = collections.deque() 
         new_intention_stack.append(self.T["i"]) 
-        C["I"].append(new_intention_stack) 
-        C["E"] = [self.T["e"]] if "E" not in C else C["E"] + [self.T["e"]]
-        #C["I"] = [(self.T["i"].head_term,self.T["i"])] if "I" not in C else C["I"] + [(self.T["i"].head_term,self.T["i"])]
-        print(C)
+        
+        # Add the event and the intention to the Circumstance
+        self.C["I"].append(new_intention_stack) 
+        self.C["E"] = [self.T["e"]] if "E" not in C else self.C["E"] + [self.T["e"]]
+        
         self.current_step = "SelInt"
         return True      
     
     def applySemanticRuleDeliberate(self):
+        """
+        This method is used to apply the first part of the reasoning cycle.
+        This part consists of the following steps:
+        - Select an event
+        - Find the plans that are related to the event
+        - Find the plans that are applicable to the event
+        - Select the plan that is applicable to the event
+        - Add the intention to the intention stack of the agent
+        """
         options = {
             "SelEv": self.applySelEv,
             "RelPl": self.applyRelPl,
@@ -370,10 +412,16 @@ class AffectiveAgent(agentspeak.runtime.Agent):
                 self.applySemanticRuleDeliberate()
             else:
                 return True
+        return True#
             
     def step(self) -> bool:
         """
-        This method is used to execute the agent's intentions
+        This method is used to apply the second part of the reasoning cycle.
+        This method consist in selecting the intention to execute and executing it.
+        This part consists of the following steps:
+        - Select the intention to execute
+        - Apply the clear intention
+        - Apply the execution intention
 
         Raises:
             log.error: If the agent has no intentions
@@ -406,11 +454,15 @@ class AffectiveAgent(agentspeak.runtime.Agent):
 
         Returns:
             bool: True if the agent has intentions, False otherwise
+            
+        - If the intention not have instructions, the current step will be changed to "CtlInt" to clear the intention
+        - If the intention have instructions, the current step will be changed to "ExecInt" to execute the intention
+         
         """
-        while C["I"] and not C["I"][0]: 
-            C["I"].popleft() 
+        while self.C["I"] and not self.C["I"][0]: 
+            self.C["I"].popleft() 
 
-        for intention_stack in C["I"]: 
+        for intention_stack in self.C["I"]: 
             if not intention_stack:
                 continue
             intention = intention_stack[-1]
@@ -443,6 +495,9 @@ class AffectiveAgent(agentspeak.runtime.Agent):
 
         Raises:
             AslError: If the plan fails
+            
+        Returns:
+            bool: True if the instruction was executed
         """
         try: 
             if self.intention_selected.instr.f(self, self.intention_selected):
@@ -463,14 +518,14 @@ class AffectiveAgent(agentspeak.runtime.Agent):
     
     def applyCtlInt(self) -> True:
         """
-        This method is used to control the intention (Not implemented)
+        This method is used to control the intention
         
         Returns:
-            bool: True
+            bool: True if the intention was cleared
         """
         self.intention_stack.pop() 
         if not self.intention_stack:
-            C["I"].remove(self.intention_stack) 
+            self.C["I"].remove(self.intention_stack) 
         elif self.intention_selected.calling_term:
             frozen = self.intention_selected.head_term.freeze(self.intention_selected.scope, {})
             
@@ -482,18 +537,39 @@ class AffectiveAgent(agentspeak.runtime.Agent):
     def run(self) -> None:
         """
         This method is used to run the step cycle of the agent
+        We run the second part of the reasoning cycle until the agent has no intentions
         """
         self.current_step = "SelInt"
         while self.step():
             pass
-    def waiters(self):
-        return (intention[-1].waiter for intention in C["I"]
+
+    def waiters(self) -> Iterator[agentspeak.runtime.Waiter]    :
+        """
+        This method is used to get the waiters of the intentions
+
+        Returns:
+            Iterator[agentspeak.runtime.Waiter]: The waiters of the intentions
+        """
+        return (intention[-1].waiter for intention in self.C["I"]
                 if intention and intention[-1].waiter)
 
 
 class Environment(agentspeak.runtime.Environment):
+    """
+    This class is used to represent the environment of the agent
+
+    Args:
+        agentspeak.runtime.Environment: The environment of the agent defined in the agentspeak library
+    """
     def build_agent_from_ast(self, source, ast_agent, actions, agent_cls=agentspeak.runtime.Agent, name=None):
-        # This function is also called by the optimizer.
+        """
+        This method is used to build the agent from the ast
+
+        Returns:
+            Tuple[ast_agent, Agent]: The ast of the agent and the agent
+            
+        """
+        
         agent_cls = AffectiveAgent
         
         log = agentspeak.Log(LOGGER, 3)
@@ -544,11 +620,10 @@ class Environment(agentspeak.runtime.Environment):
         self.ast_agent = ast_agent
         
         for ast_goal in ast_agent.goals:
+            # Start the first part of the reasoning cycle.
             agent.current_step = "SelEv"
             agent.ast_goal = ast_goal
             agent.applySemanticRuleDeliberate()
-            #agent.call(agentspeak.Trigger.addition, agentspeak.GoalType.achievement,
-                      # agent.term, agentspeak.runtime.Intention(), delayed=True)
 
         # Report errors.
         log.throw()
@@ -556,104 +631,75 @@ class Environment(agentspeak.runtime.Environment):
         self.agents[agent.name] = agent
         return ast_agent, agent
     
-    def run_agent(self, agent):
-            more_work = True
-            while more_work:
-                agent.current_step = "SelInt"
-                more_work = agent.step()
-                if not more_work:
-                    # Sleep until the next deadline.
-                    wait_until = agent.shortest_deadline()
-                    if wait_until:
-                        time.sleep(wait_until - self.time())
-                        more_work = True
+    def run_agent(self, agent: AffectiveAgent):
+        """
+        This method is used to run the agent
+         
+        Args:
+            agent (AffectiveAgent): The agent to run
+        """
+        more_work = True
+        while more_work:
+            # Start the second part of the reasoning cycle.
+            agent.current_step = "SelInt"
+            more_work = agent.step()
+            if not more_work:
+                # Sleep until the next deadline.
+                wait_until = agent.shortest_deadline()
+                if wait_until:
+                    time.sleep(wait_until - self.time())
+                    more_work = True
     def run(self):
-            maybe_more_work = True
-            while maybe_more_work:
-                maybe_more_work = False
-                for agent in self.agents.values():
-                    agent.current_step = "SelInt"
-                    if agent.step():
-                        maybe_more_work = True
-                    
-                if not maybe_more_work:
-                    deadlines = (agent.shortest_deadline() for agent in self.agents.values())
-                    deadlines = [deadline for deadline in deadlines if deadline is not None]
-                    if deadlines:
-                        time.sleep(min(deadlines) - self.time())
-                        maybe_more_work = True
+        """ 
+        This method is used to run the environment
+         
+        """
+        maybe_more_work = True
+        while maybe_more_work:
+            maybe_more_work = False
+            for agent in self.agents.values():
+                # Start the second part of the reasoning cycle.
+                agent.current_step = "SelInt"
+                if agent.step():
+                    maybe_more_work = True
+                
+            if not maybe_more_work:
+                deadlines = (agent.shortest_deadline() for agent in self.agents.values())
+                deadlines = [deadline for deadline in deadlines if deadline is not None]
+                if deadlines:
+                    time.sleep(min(deadlines) - self.time())
+                    maybe_more_work = True
+def call(trigger: agentspeak.Trigger, goal_type: agentspeak.GoalType, term: agentspeak.Literal, agent: AffectiveAgent, intention: agentspeak.runtime.Intention):
+    """
+    This method is used to call the agent
 
+    Args:
+        trigger (agentspeak.Trigger): The trigger of the agent
+        goal_type (agentspeak.GoalType): The goal type of the agent
+        term  (agentspeak.Literal): The term of the agent
+        agent  (AffectiveAgent): The agent to call
+        intention (agentspeak.runtime.Intention): The intention of the agent
 
-class BuildTermVisitor:
-    def __init__(self, variables):
-        self.variables = variables
+    """
+    return agent.call(trigger, goal_type, term, intention, delayed=False)
 
-    def visit_literal(self, ast_literal):
-        return agentspeak.Literal(ast_literal.functor,
-            (t.accept(self) for t in ast_literal.terms),
-            (t.accept(self) for t in ast_literal.annotations))
+############################################################################################################
+#################### Classes from the agentspeak library ###################################################
+############################################################################################################
 
-    def visit_const(self, ast_const):
-        return ast_const.value
+class BuildTermVisitor(agentspeak.runtime.BuildTermVisitor):
+    pass
+    
+class BuildReplacePatternVisitor(agentspeak.runtime.BuildReplacePatternVisitor):
+    pass
 
-    def visit_list(self, ast_list):
-        return tuple(t.accept(self) for t in ast_list.terms)
-
-    def visit_linked_list(self, ast_linked_list):
-        return agentspeak.LinkedList(
-            ast_linked_list.head.accept(self),
-            ast_linked_list.tail.accept(self))
-
-    def visit_unary_op(self, ast_unary_op):
-        return agentspeak.UnaryExpr(
-            ast_unary_op.operator.value,
-            ast_unary_op.operand.accept(self))
-
-    def visit_binary_op(self, ast_binary_op):
-        return agentspeak.BinaryExpr(
-            ast_binary_op.operator.value,
-            ast_binary_op.left.accept(self),
-            ast_binary_op.right.accept(self))
-
-    def visit_variable(self, ast_variable):
-        try:
-            return self.variables[ast_variable.name]
-        except KeyError:
-            if ast_variable.name == "_":
-                var = agentspeak.Wildcard()
-            else:
-                var = agentspeak.Var()
-
-            self.variables[ast_variable.name] = var
-            return var
-
-
-class BuildReplacePatternVisitor(BuildTermVisitor):
-    def __init__(self):
-        BuildTermVisitor.__init__(self, {})
-
-    def visit_unary_op(self, ast_unary_op):
-        return agentspeak.Wildcard()
-
-    def visit_binary_op(self, ast_binary_op):
-        return agentspeak.Wildcard()
-
-
-class BuildQueryVisitor:
-    def __init__(self, variables, actions, log):
-        self.variables = variables
-        self.actions = actions
-        self.log = log
-
+class BuildQueryVisitor(agentspeak.runtime.BuildQueryVisitor):
+    
     def visit_literal(self, ast_literal):
         term = ast_literal.accept(BuildTermVisitor(self.variables))
         try:
             arity = len(ast_literal.terms)
             action_impl = self.actions.lookup(ast_literal.functor, arity)
-            global C
-            
-            C["A"] = [(term, action_impl)] if "A" not in C else C["A"] + [(term, action_impl)]
-            print(C)
             return ActionQuery(term, action_impl)
         except KeyError:
             if "." in ast_literal.functor:
@@ -662,193 +708,39 @@ class BuildQueryVisitor:
                                  extra_locs=[t.loc for t in ast_literal.terms])
             return TermQuery(term)
 
-    def visit_const(self, ast_const):
-        if ast_const.value is True:
-            return TrueQuery()
-        elif ast_const.value is False:
-            return FalseQuery()
-        else:
-            raise self.log.error("non-boolean const in query context: '%s'",
-                                 ast_const.value, loc=ast_const.loc)
+class BuildEventVisitor(agentspeak.runtime.BuildEventVisitor):
+    pass
 
-    def visit_binary_op(self, ast_binary_op):
-        if ast_binary_op.operator == BinaryOp.op_and:
-            return AndQuery(ast_binary_op.left.accept(self),
-                            ast_binary_op.right.accept(self))
-        elif ast_binary_op.operator == BinaryOp.op_or:
-            return OrQuery(ast_binary_op.left.accept(self),
-                           ast_binary_op.right.accept(self))
-        elif ast_binary_op.operator == BinaryOp.op_unify:
-            return UnifyQuery(ast_binary_op.left.accept(BuildTermVisitor(self.variables)),
-                              ast_binary_op.right.accept(BuildTermVisitor(self.variables)))
-        elif not ast_binary_op.operator.value.comp_op:
-            self.log.error("invalid operator in query context: '%s'",
-                           ast_binary_op.operator.value.lexeme,
-                           loc=ast_binary_op.loc,
-                           extra_locs=[ast_binary_op.left.loc, ast_binary_op.right.loc])
-
-        return TermQuery(ast_binary_op.accept(BuildTermVisitor(self.variables)))
-
-    def visit_unary_op(self, ast_unary_op):
-        if ast_unary_op.operator == UnaryOp.op_not:
-            return NotQuery(ast_unary_op.operand.accept(self))
-        else:
-            raise self.log.error("non-boolean unary operator in query context: '%s'",
-                                 ast_unary_op.operator.lexeme, ast_unary_op.loc)
-
-    def visit_variable(self, ast_variable):
-        return TermQuery(ast_variable.accept(BuildTermVisitor(self.variables)))
-
-
-class BuildEventVisitor(BuildTermVisitor):
-    def __init__(self, log):
-        super(BuildEventVisitor, self).__init__({})
-        self.log = log
-
-    def visit_event(self, ast_event):
-        ast_event = ast_event.accept(agentspeak.parser.ConstFoldVisitor(self.log))
-        return Event(ast_event.trigger, ast_event.goal_type, ast_event.head.accept(self))
-
-    def visit_unary_op(self, op):
-        raise self.log.error("event is supposed to be unifiable, but contains non-const expression", loc=op.loc)
-
-    def visit_binary_op(self, op):
-        raise self.log.error("event is supposed to be unifiable, but contains non-const expression", loc=op.loc)
-
-
-class TrueQuery:
-    def execute(self, agent, intention):
-        yield
-    
+class TrueQuery(agentspeak.runtime.TrueQuery):
     def __str__(self):
         return "true"
+    
+class FalseQuery(agentspeak.runtime.FalseQuery):
+    pass
 
-
-class FalseQuery:
+class ActionQuery(agentspeak.runtime.ActionQuery):
+    
     def execute(self, agent, intention):
-        return
-        yield
-
-
-class ActionQuery:
-    def __init__(self, term, impl):
-        self.term = term
-        self.impl = impl
-
-    def execute(self, agent, intention):
+        #agent.C["A"] = [(self.term, self.impl)] if "A" not in agent.C else agent.C["A"] + [(self.term, self.impl)]
         for _ in self.impl(agent, self.term, intention):
             yield
 
+class TermQuery(agentspeak.runtime.TermQuery):
+    pass
 
-class TermQuery:
-    def __init__(self, term):
-        self.term = term
+class AndQuery(agentspeak.runtime.AndQuery):
+    pass
 
-    def execute(self, agent, intention):
-        # Boolean constants.
-        term = agentspeak.evaluate(self.term, intention.scope)
-        if term is True:
-            yield
-            return
-        elif term is False:
-            return
+class OrQuery(agentspeak.runtime.OrQuery):
+    pass
 
-        try:
-            group = term.literal_group()
-        except AttributeError:
-            raise AslError("expected boolean or literal in query context, got: '%s'" % term)
+class NotQuery(agentspeak.runtime.NotQuery):
+    pass
 
-        # Query on the belief base.
-        for belief in agent.beliefs[group]:
-            for _ in agentspeak.unify_annotated(term, belief, intention.scope, intention.stack):
-                yield
+class UnifyQuery(agentspeak.runtime.UnifyQuery):
+    pass
 
-        choicepoint = object()
-
-        # Follow rules.
-        for rule in agent.rules[group]:
-            rule = copy.deepcopy(rule)
-
-            intention.stack.append(choicepoint)
-
-            if agentspeak.unify(term, rule.head, intention.scope, intention.stack):
-                for _ in rule.query.execute(agent, intention):
-                    yield
-            # Check reroll
-            agentspeak.reroll(intention.scope, intention.stack, choicepoint)
-
-    def __str__(self):
-        return str(self.term)
-
-
-class AndQuery:
-    def __init__(self, left, right):
-        self.left = left
-        self.right = right
-
-    def execute(self, agent, intention):
-        for _ in self.left.execute(agent, intention):
-            for _ in self.right.execute(agent, intention):
-                yield
-
-    def __str__(self):
-        return "(%s & %s)" % (self.left, self.right)
-
-
-class OrQuery:
-    def __init__(self, left, right):
-        self.left = left
-        self.right = right
-
-    def execute(self, agent, intention):
-        for _ in self.left.execute(agent, intention):
-            yield
-
-        for _ in self.right.execute(agent, intention):
-            yield
-
-    def __str__(self):
-        return "(%s | %s)" % (self.left, self.right)
-
-
-class NotQuery:
-    def __init__(self, query):
-        self.query = query
-
-    def execute(self, agent, intention):
-        choicepoint = object()
-        intention.stack.append(choicepoint)
-
-        success = any(True for _ in self.query.execute(agent, intention))
-
-        agentspeak.reroll(intention.scope, intention.stack, choicepoint)
-
-        if not success:
-            yield
-
-
-class UnifyQuery:
-    def __init__(self, left, right):
-        self.left = left
-        self.right = right
-
-    def execute(self, agent, intention):
-        return agentspeak.unify_annotated(self.left, self.right, intention.scope, intention.stack)
-
-    def __str__(self):
-        return "(%s = %s)" % (self.left, self.right)
-class BuildInstructionsVisitor:
-    def __init__(self, variables, actions, tail, log):
-        self.variables = variables
-        self.actions = actions
-        self.tail = tail
-        self.log = log
-
-    def add_instr(self, f, loc=None, extra_locs=()):
-        self.tail.success = agentspeak.runtime.Instruction(f, loc, extra_locs)
-        self.tail = self.tail.success
-        return self.tail
-
+class BuildInstructionsVisitor(agentspeak.runtime.BuildInstructionsVisitor):
     def visit_formula(self, ast_formula):
         if ast_formula.formula_type == agentspeak.FormulaType.add:
             term = ast_formula.term.accept(BuildTermVisitor(self.variables))
@@ -883,69 +775,5 @@ class BuildInstructionsVisitor:
             self.add_instr(agentspeak.runtime.pop_query)
 
         return self.tail
-
-    def visit_for(self, ast_for):
-        query = ast_for.generator.accept(BuildQueryVisitor(self.variables, self.actions, self.log))
-        self.add_instr(functools.partial(agentspeak.runtime.push_query, query))
-
-        for_head = self.add_instr(agentspeak.runtime.next_or_fail)
-
-        last_in_loop = ast_for.body.accept(self)
-        last_in_loop.success = for_head
-
-        self.tail = agentspeak.runtime.Instruction(agentspeak.runtime.pop_query)
-        for_head.failure = self.tail
-        return self.tail
-
-    def visit_if_then_else(self, ast_if_then_else):
-        query = ast_if_then_else.condition.accept(BuildQueryVisitor(self.variables, self.actions, self.log))
-        self.add_instr(functools.partial(agentspeak.runtime.push_query, query))
-        test_instr = self.add_instr(agentspeak.runtime.next_or_fail)
-
-        tail = agentspeak.runtime.Instruction(agentspeak.runtime.pop_query)
-
-        if ast_if_then_else.if_body:
-            if_tail = ast_if_then_else.if_body.accept(self)
-            if_tail.success = tail
-        else:
-            test_instr.success = tail
-
-        if ast_if_then_else.else_body:
-            else_head = agentspeak.runtime.Instruction(agentspeak.runtime.noop)
-            test_instr.failure = else_head
-            self.tail = else_head
-            ast_if_then_else.else_body.accept(self)
-            self.tail.success = tail
-        else:
-            test_instr.failure = tail
-
-        self.tail = tail
-        return self.tail
-
-    def visit_while(self, ast_while):
-        tail = agentspeak.runtime.Instruction(agentspeak.runtime.pop_choicepoint)
-
-        query = ast_while.condition.accept(BuildQueryVisitor(self.variables, self.actions, self.log))
-        while_head = self.add_instr(functools.partial(agentspeak.runtime.push_query, query))
-        self.add_instr(agentspeak.runtime.push_choicepoint)
-
-        test_instr = self.add_instr(agentspeak.runtime.next_or_fail)
-        test_instr.failure = tail
-
-        self.add_instr(agentspeak.runtime.pop_query)
-
-        ast_while.body.accept(self)
-        while_tail = self.add_instr(agentspeak.runtime.pop_choicepoint)
-        while_tail.success = while_head
-
-        self.tail = tail
-        return self.add_instr(agentspeak.runtime.pop_query)
-
-    def visit_body(self, ast_body):
-        for formula in ast_body.formulas:
-            formula.accept(self)
-
-        return self.tail
     
-def call(trigger, goal_type, term, agent, intention):
-    return agent.call(trigger, goal_type, term, intention, delayed=False)
+

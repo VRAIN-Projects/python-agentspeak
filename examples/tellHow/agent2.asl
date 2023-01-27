@@ -1,4 +1,5 @@
 !start.
+!hello.
 
 +!start : true  
     <- 
