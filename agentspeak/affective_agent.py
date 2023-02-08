@@ -179,15 +179,13 @@ class AffectiveAgent(agentspeak.runtime.Agent):
                 intention.waiter = None 
 
         if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.addition:
-            self.T["e"] = term
-            self.frozen = agentspeak.freeze(term, calling_intention.scope, {}) 
-            self.T["i"] = agentspeak.runtime.Intention()
-            self.current_step = "RelPl"
-            self.delayed = delayed
+            
+            self.C["E"] = [term] if "E" not in self.C else self.C["E"] + [term]
+            self.current_step = "SelEv"
             self.applySemanticRuleDeliberate()
             return True
             
-           
+        
         if goal_type == agentspeak.GoalType.achievement and trigger == agentspeak.Trigger.addition: 
             raise AslError("no applicable plan for %s%s%s/%d" % (
                 trigger.value, goal_type.value, frozen.functor, len(frozen.args))) 
@@ -288,12 +286,21 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         Returns:
             bool: True if the event was selected
         """
-        self.term = self.ast_goal.atom.accept(BuildTermVisitor({}))
-        self.T["e"] = self.term
-        self.frozen = agentspeak.freeze(self.term, agentspeak.runtime.Intention().scope, {}) 
-        self.T["i"] = agentspeak.runtime.Intention()
-        self.current_step = "RelPl"
-        self.delayed = True
+        
+        #self.term = self.ast_goal.atom.accept(BuildTermVisitor({}))
+        if len(self.C["E"]) > 0:
+            # Select one event from the list of events and remove it from the list without using pop
+            self.T["e"] = self.C["E"][0]
+            self.C["E"] = self.C["E"][1:]
+            self.frozen = agentspeak.freeze(self.T["e"], agentspeak.runtime.Intention().scope, {}) 
+            self.T["i"] = agentspeak.runtime.Intention()
+            self.current_step = "RelPl"
+            self.delayed = True
+        else:
+            self.current_step = "SelEv"
+            self.delayed = False
+            return False
+            
         return True
     
     def applyRelPl(self) -> bool:
@@ -384,7 +391,6 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         
         # Add the event and the intention to the Circumstance
         self.C["I"].append(new_intention_stack) 
-        self.C["E"] = [self.T["e"]] if "E" not in C else self.C["E"] + [self.T["e"]]
         
         self.current_step = "SelInt"
         return True      
@@ -406,13 +412,14 @@ class AffectiveAgent(agentspeak.runtime.Agent):
             "SelAppl": self.applySelAppl,
             "AddIM": self.applyAddIM
         }
+
         if self.current_step in options:
             flag = options[self.current_step]()
             if flag:
                 self.applySemanticRuleDeliberate()
             else:
                 return True
-        return True#
+        return True
             
     def step(self) -> bool:
         """
@@ -435,7 +442,6 @@ class AffectiveAgent(agentspeak.runtime.Agent):
             "CtlInt": self.applyCtlInt,
             "ExecInt": self.applyExecInt
         }
-        
         if self.current_step in options:
             flag = options[self.current_step]()
             if not flag:
@@ -622,8 +628,118 @@ class Environment(agentspeak.runtime.Environment):
         for ast_goal in ast_agent.goals:
             # Start the first part of the reasoning cycle.
             agent.current_step = "SelEv"
-            agent.ast_goal = ast_goal
-            agent.applySemanticRuleDeliberate()
+            term = ast_goal.atom.accept(BuildTermVisitor({}))
+            agent.C["E"] = [term] if "E" not in agent.C else agent.C["E"] + [term]
+
+        # Trying different ways to multiprocess the cycles of the agents
+        multiprocesing = "concurrent.futures" # threading, asyncio, concurrent.futures, NO
+        rc = 500 # number of cycles
+        import time 
+        
+        if multiprocesing == "threading":
+        
+            import threading
+            import time
+
+            condition = threading.Condition()
+            agent.counter = 0
+
+            def hola_thread():
+                with condition:
+                    print("Start of the thread 1")
+                    tiempo_inicial = time.time()
+                    while agent.counter < rc:
+                        condition.wait()
+                    t = time.time() - tiempo_inicial
+                    print("End of the thread 1", t)
+                    # Open a txt file to save the results
+                    with open("results.txt", "a") as f:
+                        f.write(f"{multiprocesing};{t};{rc} \n")
+
+            def agent_func():
+                with condition:
+                    # Ejecutar la regla semántica (commented out since `agent` and `agent.C` are undefined in this code)
+                    if "E" in agent.C:
+                        for i in range(len(agent.C["E"])):
+                            agent.applySemanticRuleDeliberate()
+                    # Sleep 5 seconds
+                    time.sleep(0.001)
+                    print("End of the one thread like thread 2")
+                    agent.counter += 1
+                    if agent.counter == rc:
+                        condition.notify()
+
+            t1 = threading.Thread(target=hola_thread)
+            t1.start()
+
+            threads = []
+            for i in range(rc):
+                t2 = threading.Thread(target=agent_func)
+                threads.append(t2)
+                t2.start()
+
+            for t in threads:
+                t.join()
+            t1.join()
+
+        
+        elif multiprocesing == "asyncio":
+            import asyncio
+
+            async def hola_thread():
+                print("Start of the thread 1")
+                tiempo_inicial = time.time()
+                
+                await self.agent_funcs_done
+                t = time.time() - tiempo_inicial
+                print("End of the thread 1", t)
+                with open("results.txt", "a") as f:
+                    f.write(f"{multiprocesing};{t};{rc} \n")
+
+            async def agent_func():
+                # Ejecutar la regla semántica
+                if "E" in agent.C:
+                    for i in range(len(agent.C["E"])):
+                        agent.applySemanticRuleDeliberate()
+                # Sleep 5 seconds
+                await asyncio.sleep(0.001)
+                print("End of the one thread like thread 2")
+
+            async def main():
+                self.agent_funcs_done = asyncio.gather(*[agent_func() for i in range(rc)])
+                await asyncio.gather(hola_thread(), self.agent_funcs_done)
+
+            asyncio.run(main())
+            
+        elif multiprocesing == "concurrent.futures":
+            import concurrent.futures
+            import time
+
+            def hola_thread():
+                print("Start of the thread 1")
+                tiempo_inicial = time.time()
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    agent_funcs = [executor.submit(agent_func) for i in range(rc)]
+                    concurrent.futures.wait(agent_funcs)
+                t = time.time() - tiempo_inicial
+                print("End of the thread 1", t)
+                with open("results.txt", "a") as f:
+                    f.write(f"{multiprocesing};{t};{rc} \n")
+            def agent_func():
+                # Ejecutar la regla semántica
+                if "E" in agent.C:
+                    for i in range(len(agent.C["E"])):
+                        agent.applySemanticRuleDeliberate()
+                # Sleep 5 seconds
+                time.sleep(0.001)
+                print("End of the one thread like thread 2")
+
+            hola_thread()
+    
+        else: 
+            if "E" in agent.C:
+                for i in range(len(agent.C["E"])):   
+                    agent.applySemanticRuleDeliberate()
 
         # Report errors.
         log.throw()
@@ -662,7 +778,6 @@ class Environment(agentspeak.runtime.Environment):
                 agent.current_step = "SelInt"
                 if agent.step():
                     maybe_more_work = True
-                
             if not maybe_more_work:
                 deadlines = (agent.shortest_deadline() for agent in self.agents.values())
                 deadlines = [deadline for deadline in deadlines if deadline is not None]
