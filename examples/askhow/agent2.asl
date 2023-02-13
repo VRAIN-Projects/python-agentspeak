@@ -1,7 +1,7 @@
 
 me(100).
 
-@etiqueta[macarron(45)]
+@etiqueta[macarron(45), esperanza(gracia)]
 +!hello : true <-
     .print("Este es el plan");
     .print("Este es el plan").

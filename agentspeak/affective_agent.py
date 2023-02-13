@@ -245,7 +245,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
                 ast_plan.body.accept(BuildInstructionsVisitor(variables, actions, body, log)) 
                  
             #Converts the Astplan to Plan
-            plan = agentspeak.runtime.Plan(ast_plan.event.trigger, ast_plan.event.goal_type, head, context, body,ast_plan.body,ast_plan.dicts_annotations) 
+            plan = agentspeak.runtime.Plan(ast_plan.event.trigger, ast_plan.event.goal_type, head, context, body,ast_plan.body,ast_plan.annotations) 
             
             if ast_plan.args[0] is not None:
                 plan.args[0] = ast_plan.args[0]
@@ -259,7 +259,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
 
         # If the goal is an askHow and the trigger is an addition, then the agent will find the plan in his list of plans and send it to the agent that asked
         if goal_type == agentspeak.GoalType.askHow and trigger == agentspeak.Trigger.addition: 
-
+           self.T["e"] =  term.args[2]
            return self._ask_how(term)
 
         # If the goal is an unTellHow and the trigger is a removal, then the agent will delete the goal from his list of plans   
@@ -270,9 +270,8 @@ class AffectiveAgent(agentspeak.runtime.Agent):
             delete_plan = []
             plans = self.plans.values()
             for plan in plans:
-                for differents in plan:
-                    strplan = agentspeak.runtime.plan_to_str(differents)
-                    if strplan.startswith(label):
+                for differents in plan:                    
+                    if ("@" + str(differents.annotation[0].functor)).startswith(label):
                         delete_plan.append(differents)
             for differents in delete_plan:
                 plan.remove(differents)
@@ -318,8 +317,8 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         plans = self.plans.values()
         for plan in plans:
             for differents in plan:
-                strplan = agentspeak.runtime.plan_to_str(differents)
-                if self.T["e"].functor in strplan.split(":")[0]:
+                print(differents.head.functor,self.T["e"].functor )
+                if self.T["e"].functor in differents.head.functor:
                     RelPlan[(differents.trigger, differents.goal_type, differents.head.functor, len(differents.head.args))].append(differents)
          
         if not RelPlan:
@@ -606,7 +605,7 @@ class Environment(agentspeak.runtime.Environment):
 
             str_body = str(ast_plan.body)
 
-            plan = agentspeak.runtime.Plan(ast_plan.event.trigger, ast_plan.event.goal_type, head, context, body, ast_plan.body, ast_plan.dicts_annotations)
+            plan = agentspeak.runtime.Plan(ast_plan.event.trigger, ast_plan.event.goal_type, head, context, body, ast_plan.body, ast_plan.annotations)
             if ast_plan.args[0] is not None:
                 plan.args[0] = ast_plan.args[0]
 
@@ -632,7 +631,7 @@ class Environment(agentspeak.runtime.Environment):
             agent.C["E"] = [term] if "E" not in agent.C else agent.C["E"] + [term]
 
         # Trying different ways to multiprocess the cycles of the agents
-        multiprocesing = "concurrent.futures" # threading, asyncio, concurrent.futures, NO
+        multiprocesing = "NO" # threading, asyncio, concurrent.futures, NO
         rc = 500 # number of cycles
         import time 
         

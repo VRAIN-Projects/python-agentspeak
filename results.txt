@@ -56,3 +56,7 @@ concurrent.futures;0.5156762599945068;500
 concurrent.futures;0.4963347911834717;500 
 concurrent.futures;0.5079948902130127;500 
 concurrent.futures;0.4963393211364746;500 
+concurrent.futures;0.5138154029846191;500 
+concurrent.futures;0.5061745643615723;500 
+concurrent.futures;0.5126686096191406;500 
+concurrent.futures;0.5028796195983887;500 

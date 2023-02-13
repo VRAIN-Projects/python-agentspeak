@@ -557,6 +557,8 @@ def parse_atom(tok, tokens, log):
 
 def parse_power(tok, tokens, log):
     tok, expr = parse_atom(tok, tokens, log)
+    
+
     while tok.lexeme == "**":
         op = AstBinaryOp()
         op.left = expr
@@ -661,7 +663,7 @@ def parse_and_expr(tok, tokens, log):
     return tok, expr
 
 
-def parse_term(tok, tokens, log):
+def parse_term(tok, tokens, log):  
     tok, expr = parse_and_expr(tok, tokens, log)
     while tok.lexeme == "|":
         bin_op = AstBinaryOp()
@@ -899,41 +901,17 @@ def parse_event(tok, tokens, log):
     tok, event.head = parse_literal(tok, tokens, log)
     return tok, event
 
-def create_dict_annotation(annotation):
-    """
-    This function recieves a label as string and retuns a dictionary with the pred and annotations
-    For instance:
-        imput = "pred[annotation1(value1),annotation2(value2)]"
-        output = {"pred": {"annotation": value1, "annotation2: value2}}
-    If this function receives a label without annotations then will return a dictionary with the predicate
-    For instance:
-        imput = "pred"
-        output = {"pred": {}}
-    """
-    if "[" not in annotation:
-        key = annotation
-        values = {}
-    else:
-        key = annotation.split("[")[0]
-        values = annotation.split("[")[1].split("]")[0].split(",")
-        values = {v.split("(")[0]: int(v.split("(")[1].replace(")","")) if v.split("(")[1].replace(")","").isdigit() else v.split("(")[1].replace(")","") for v in values}
 
-    return {key: values}
 
 def parse_plan(tok, tokens, log):
     plan = AstPlan()
     while tok.lexeme == "@":
         tok = next(tokens)
+        
         tok, annotation = parse_literal(tok, tokens, log)
         plan.annotations.append(annotation)
-
-        # Create a dict with the annotations of the label and add it to the plan
-        dict_annotations = create_dict_annotation(str(annotation)) 
-        if plan.dicts_annotations is not None: 
-            raise log.error("There are more than one label for one plan")
-        else:
-            plan.dicts_annotations = dict_annotations 
-        
+        dict_annotations = {annotation.functor: { annotation.annotations[i].functor: [str(annotation.annotations[i].terms[j]) for j in range(len(annotation.annotations[i].terms))] for i in range(len(annotation.annotations))}}
+      
     tok, event = parse_event(tok, tokens, log)
     plan.event = event
     plan.loc = event.loc

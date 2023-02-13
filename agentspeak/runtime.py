@@ -508,7 +508,7 @@ class Agent:
                 ast_plan.body.accept(BuildInstructionsVisitor(variables, actions, body, log)) 
                  
             #Converts the Astplan to Plan
-            plan = Plan(ast_plan.event.trigger, ast_plan.event.goal_type, head, context, body,ast_plan.body,ast_plan.dicts_annotations) 
+            plan = Plan(ast_plan.event.trigger, ast_plan.event.goal_type, head, context, body,ast_plan.body,ast_plan.annotations) 
             
             if ast_plan.args[0] is not None:
                 plan.args[0] = ast_plan.args[0]
@@ -534,8 +534,7 @@ class Agent:
             plans = self.plans.values()
             for plan in plans:
                 for differents in plan:
-                    strplan = plan_to_str(differents)
-                    if strplan.startswith(label):
+                    if ("@" + str(differents.annotation[0].functor)).startswith(label):
                         delete_plan.append(differents)
             for differents in delete_plan:
                 plan.remove(differents)
@@ -555,8 +554,15 @@ class Agent:
                 sender_name = annotation.split("(")[1].split(")")[0]
 
         # Find the plans       
-        plans_wanted = self.find_plans(term)
+        plans_wanted = collections.defaultdict(lambda: [])
+        plans = self.plans.values()
+        for plan in plans:
+            for differents in plan:
+                print(differents.head.functor,self.T["e"])
+                if differents.head.functor in self.T["e"]:
+                    plans_wanted[(differents.trigger, differents.goal_type, differents.head.functor, len(differents.head.args))].append(differents)
 
+        print(plans_wanted.values())
         # If the agent has any plan that match with the plan wanted, then the agent will send the plan to the agent that asked                       
         if plans_wanted:
             intention = Intention()
@@ -570,10 +576,13 @@ class Agent:
                 else:
                     receiving_agents.append(self.env.agents[receiver])
             
-            for strplan in plans_wanted:
-                term.args = (sender_name, "tellHow", strplan)
-                for receiver in receiving_agents:
-                    receiver.call(agentspeak.Trigger.addition, agentspeak.GoalType.tellHow, term, intention)
+            for plan in plans_wanted.values():
+                for differents in plan:
+                    print(type(differents))
+                    strplan = plan_to_str(differents)
+                    term.args = (sender_name, "tellHow", strplan)
+                    for receiver in receiving_agents:
+                        receiver.call(agentspeak.Trigger.addition, agentspeak.GoalType.tellHow, term, intention)
         else:
             log = agentspeak.Log(LOGGER)
             raise log.warning(f"The agent not know the plan {term.args[2]}")
@@ -732,21 +741,37 @@ def plan_to_str(plan):
         context = "true"
     else:
         context = plan.context
-    
-    if plan.annotation is None:
-        label = ""
-    else:
-        if len(list(plan.annotation[list(plan.annotation.keys())[0]].keys())) == 0:
-            label = f"@{list(plan.annotation.keys())[0]}"
-        else:
-            label = f"@{list(plan.annotation.keys())[0]}["
-            for annot in plan.annotation[list(plan.annotation.keys())[0]].keys():
-                label += f"{annot}({plan.annotation[list(plan.annotation.keys())[0]][annot]}),"
-            label = label[:-1] + "]"
-    
+    # Provisional
     body = plan.str_body
+    head = str(plan.head)
+    start = 0
+    print(00000)
+    if "_X_" in head:
+        # We have this str hola(_X_e63_1d2b430e260, _X_d05_1d2b430e230)[me(_X_b20_1d2b430e110)] we want to change it to hola(X, Y)[me(Z)]
+        for i in range(len(plan.args)):
+            # We get the open and close parenthesis, when there are more than one arguments we must change the first_close to the next open parenthesis
+            first_open, first_close = head.find("(",start), head.find(")", start)
+            print(start, first_open, first_close)
+            print(head)
+            # Change the string between the parenthesis to plan.head.args[0]
+            print(plan.args[0], type(head))
+            if  "(" in str(plan.args[i]):
+                head = head[:first_open+1] + str(plan.args[i]).split("(")[1].split(")")[0] + head[first_close:]
+            else:
+                head = head[:first_open+1] + str(plan.args[i]) + head[first_close:]
+            start = head.find(")", start) +1 
+        
+    if plan.annotation:
+        label = str(plan.annotation[0])
+    else:
+        label = ""
+        print(f"{plan.trigger.value}{plan.goal_type.value}{head} : {context} <- {body}.")
+        return  f"{plan.trigger.value}{plan.goal_type.value}{head} : {context} <- {body}."
+
     
-    return f"{label} {plan.trigger.value}{plan.goal_type.value}{plan.head} : {context} <- {body}."
+    
+    print(f"@{label} {plan.trigger.value}{plan.goal_type.value}{head} : {context} <- {body}.")
+    return f"@{label} {plan.trigger.value}{plan.goal_type.value}{head} : {context} <- {body}."
 
 class Environment:
     def __init__(self):
