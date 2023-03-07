@@ -41,6 +41,9 @@ class AstBaseVisitor(object):
 
     def visit_rule(self, ast_rule):
         pass
+    
+    def visit_concern(self, ast_concern):
+        pass
 
     def visit_goal(self, ast_goal):
         pass
@@ -385,6 +388,7 @@ class AstAgent(AstNode):
         self.beliefs = []
         self.goals = []
         self.plans = []
+        self.concerns = []
 
     def accept(self, visitor):
         return visitor.visit_agent(self)
@@ -423,6 +427,45 @@ class AstAgent(AstNode):
 
         return "".join(builder)
 
+
+def parse_tkconcern(tok, tokens, log):
+
+    literal = AstLiteral()
+    literal.functor = tok.lexeme
+    literal.loc = tok.loc
+
+    tok = next(tokens)
+
+    if tok.lexeme == "(":
+        while True:
+            tok = next(tokens)
+            tok, term = parse_term(tok, tokens, log)
+            literal.terms.append(term)
+            if tok.lexeme == ")":
+                tok = next(tokens)
+                break
+            elif tok.lexeme == ",":
+                continue
+            else:
+                raise log.error("expected ')' or another argument for the literal, got '%s'",
+                                tok.lexeme, loc=tok.loc, extra_locs=[literal.loc])
+
+    if tok.lexeme == "[":
+        while True:
+            tok = next(tokens)
+            tok, term = parse_term(tok, tokens, log)
+            literal.annotations.append(term)
+
+            if tok.lexeme == "]":
+                tok = next(tokens)
+                break
+            elif tok.lexeme == ",":
+                continue
+            else:
+                raise log.error("expected ']' or another annotation, got '%s'", tok.lexeme,
+                                loc=tok.loc, extra_locs=[literal.loc])
+
+    return tok, literal
 
 def parse_literal(tok, tokens, log):
 
@@ -679,6 +722,7 @@ def parse_term(tok, tokens, log):
 
 
 def parse_rule_or_belief(tok, tokens, log):
+    
     if "." in tok.lexeme:
         log.warning("found '.' in assertion. should this have been an action?", loc=tok.loc)
 
@@ -697,6 +741,25 @@ def parse_rule_or_belief(tok, tokens, log):
         # Just the belief atom.
         return tok, belief_atom
 
+def parse_concern(tok, tokens, log):
+    
+    if "." in tok.lexeme:
+        log.warning("found '.' in assertion. should this have been an action?", loc=tok.loc)
+
+    tok, belief_atom = parse_tkconcern(tok, tokens, log)
+
+    if tok.lexeme == ":-":
+        # A rule with head and body.
+        concern = AstConcern()
+        concern.head = belief_atom
+        concern.loc = tok.loc
+
+        tok = next(tokens)
+        tok, concern.consequence = parse_term(tok, tokens, log)
+        return tok, concern
+    else:
+        # Just the belief atom.
+        return tok, belief_atom
 
 def parse_initial_goal(tok, tokens, log):
     if tok.lexeme != "!":
@@ -938,7 +1001,71 @@ def parse_plan(tok, tokens, log):
 
     return tok, plan
 
+class AstConcernqqq():
+    def __init__(self):
+        self.var = None
+        self.var_value = None
+        self.formula = None
+        self.log_expr = []
+        self.posible_values = {}
+    
+    def initialize(self):
+        term = self.formula.term
+        self.posible_values[self.var.name] = []
+         
+        list_expr = []
+        while hasattr(term, "operator") and term.operator.name == "op_or":
+            list_expr.append(term.right)
+            term = term.left
+        list_expr.append(term)        
+        
+        for expr in list_expr:
+            list_expr2 = []
+            while hasattr(expr, "operator") and expr.operator.name == "op_and":
+                print(hasattr(expr.right, "operator") , expr.right.operator.name == "op_unify")
+                if hasattr(expr.right, "operator") and expr.right.operator.name == "op_unify":
+                    self.posible_values[expr.right.left.name].append(expr.right.right.value)
+                else:
+                    list_expr2.append(expr.right)
+                expr = expr.left
+                
+            if hasattr(expr, "operator") and expr.operator.name == "op_unify":
+                    self.posible_values[expr.left.name].append(expr.right.value)
+            else:
+                list_expr2.append(expr)
+            
+            self.log_expr.append(list_expr2)
+        
+    def check(self, beliefs):
+        for log_expr_id in range(len(self.log_expr)):
+            op_expr = True
+            for expr in self.log_expr[log_expr_id]:
+                
+                values = [i.args for i in beliefs[(expr.functor, len(expr.terms))]]
+                op_expr = False if len(values) == 0 else op_expr
+                for value in values:
+                    for j in range(len(expr.terms)):
+                        if value[j] != expr.terms[j].value:
+                            op_expr = False
+                if op_expr == False:
+                    break
+            if op_expr == True:
+                #print("Esta coincide", self.log_expr[log_expr_id])
+                #print("La variable tomaría el valor de", [self.posible_values[i][log_expr_id] for i in self.posible_values.keys()])
+                pass
+                    
+class AstConcern(AstNode):
+    def __init__(self):
+        super(AstConcern, self).__init__()
+        self.head = None
+        self.consequence = None
 
+    def accept(self, visitor):
+        return visitor.visit_concern(self)
+
+    def __str__(self):
+        return "%s :- %s" % (self.head, self.consequence)  
+    
 def parse_agent(filename, tokens, log, included_files, directive=None):
     included_files = included_files | frozenset([os.path.normpath(filename)])
     agent = AstAgent()
@@ -1045,6 +1172,14 @@ def parse_agent(filename, tokens, log, included_files, directive=None):
                 log.info("missing '.' after this plan", loc=last_plan.loc)
                 raise log.error("expected '.' after plan, got '%s'", tok.lexeme, loc=tok.loc, extra_locs=[last_plan.loc])
             agent.plans.append(last_plan)
+        elif tok.lexeme == "concern__":
+            #TK CONCERN
+            tok, ast_node = parse_concern(tok, tokens, log) 
+            if isinstance(ast_node, AstConcern):
+                if tok.lexeme != ".":
+                    log.info("missing '.' after this concern", loc=ast_node.loc)
+                    raise log.error("expected '.' after concern, got '%s'", tok.lexeme, loc=tok.loc, extra_locs=[ast_node.loc])
+                agent.concerns.append(ast_node)
         else:
             log.error("unexpected token: '%s'", tok.lexeme, loc=tok.loc)
 
@@ -1390,6 +1525,11 @@ class ConstFoldVisitor(object):
         ast_rule.head = ast_rule.head.accept(TermFoldVisitor(self.log))
         ast_rule.consequence = ast_rule.consequence.accept(LogicalFoldVisitor(self.log))
         return ast_rule
+    
+    def visit_concern(self, ast_concern):
+        ast_concern.head = ast_concern.head.accept(TermFoldVisitor(self.log))
+        ast_concern.consequence = ast_concern.consequence.accept(LogicalFoldVisitor(self.log))
+        return ast_concern
 
     def visit_list(self, ast_list):
         term_visitor = TermFoldVisitor(self.log)

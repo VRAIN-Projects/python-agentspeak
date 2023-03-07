@@ -7,6 +7,10 @@ import copy
 import functools
 import os.path
 import time
+import threading
+import asyncio
+import concurrent.futures
+import random
 
 import agentspeak
 import agentspeak.runtime
@@ -26,7 +30,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
     This class is a subclass of the Agent class. 
     It is used to add the affective layer to the agent.
     """
-    def __init__(self, env: agentspeak.runtime.Environment, name: str, beliefs = None, rules = None, plans = None):
+    def __init__(self, env: agentspeak.runtime.Environment, name: str, beliefs = None, rules = None, plans = None, concerns = None):
         """
         Constructor of the AffectiveAgent class.
         
@@ -53,13 +57,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
                 - "e": Event.
              
         """
-        self.env = env
-        self.name = name
-
-        self.beliefs = collections.defaultdict(lambda: set()) if beliefs is None else beliefs
-        self.rules = collections.defaultdict(lambda: []) if rules is None else rules
-        self.plans = collections.defaultdict(lambda: []) if plans is None else plans
-
+        super(AffectiveAgent, self).__init__(env, name, beliefs, rules, plans)
         
         self.current_step = ""
         self.T = {}
@@ -68,53 +66,19 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         self.C = {}
         self.C["I"] = collections.deque()
         
+        self.Ag = {"P": {}, "cc": []} # Personality and concerns definition
         
-    def add_rule(self, rule: agentspeak.runtime.Rule):
-        """
-        This method is used to add a rule to the agent.
-
-        Args:
-            rule (agentspeak.runtime.Rule): Rule to add.
-        """
-        super(AffectiveAgent, self).add_rule(rule)
-    
-    def add_plan(self, plan: agentspeak.runtime.Plan):
-        """
-        This method is used to add a plan to the agent.
+        self.Ta = {"mood": {}, "emotion":{}} # Temporal affective state definition
         
-        Args:
-            plan (agentspeak.runtime.Plan): Plan to add.
-        """
-        super(AffectiveAgent, self).add_plan(plan)
+        self.Mem = {} # Affective memory definition (⟨event 𝜀, affective value av⟩)
         
-    def add_belief(self, term: agentspeak.Literal, scope: dict):
-        """This method is used to add a belief to the agent.
-
-        Args:
-            term (agentspeak.Literal): Belief to add.
-            scope (dict): Dict with the scopes of each term.
-        """
-        super(AffectiveAgent, self).add_belief(term, scope)
+        self.concerns = collections.defaultdict(lambda: []) if concerns is None else concerns
         
-    def test_belief(self, term: agentspeak.Literal, intention: agentspeak.runtime.Intention):
-        """
-        This method is used to test a belief of the agent.
-
-        Args:
-            term (agentspeak.Literal): Belief to test.
-            intention (agentspeak.runtime.Intention): Intention of the agent.
-        """
-        super(AffectiveAgent, self).test_belief(term, intention)
-    
-    def remove_belief(self, term: agentspeak.Literal, intention: agentspeak.runtime.Intention) -> None:
-        """
-        This method is used to remove a belief of the agent.
-
-        Args:
-            term (agentspeak.Literal): Belief to remove.
-            intention (agentspeak.runtime.Intention): Intention of the agent.
-        """
-        super(AffectiveAgent, self).remove_belief(term, intention)
+        
+    def add_concern(self, concern):
+        print("The query is: ", concern.query)
+        concern.execute(self)
+        self.concerns[(concern.head.functor, len(concern.head.args))].append(concern)
         
     def call(self, trigger: agentspeak.Trigger, goal_type:agentspeak.GoalType, term: agentspeak.Literal, calling_intention: agentspeak.runtime.Intention, delayed: bool = False):
         """ This method is used to call an event.
@@ -232,7 +196,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
             variables = {} 
             actions = agentspeak.stdlib.actions
             
-            head = ast_plan.event.head.accept(BuildTermVisitor(variables)) 
+            head = ast_plan.event.head.accept(agentspeak.runtime.BuildTermVisitor(variables)) 
 
             if ast_plan.context: 
                 context = ast_plan.context.accept(BuildQueryVisitor(variables, actions, log)) 
@@ -286,7 +250,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
             bool: True if the event was selected
         """
         
-        #self.term = self.ast_goal.atom.accept(BuildTermVisitor({}))
+        #self.term = self.ast_goal.atom.accept(agentspeak.runtime.BuildTermVisitor({}))
         if len(self.C["E"]) > 0:
             # Select one event from the list of events and remove it from the list without using pop
             self.T["e"] = self.C["E"][0]
@@ -317,7 +281,6 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         plans = self.plans.values()
         for plan in plans:
             for differents in plan:
-                print(differents.head.functor,self.T["e"].functor )
                 if self.T["e"].functor in differents.head.functor:
                     RelPlan[(differents.trigger, differents.goal_type, differents.head.functor, len(differents.head.args))].append(differents)
          
@@ -411,7 +374,6 @@ class AffectiveAgent(agentspeak.runtime.Agent):
             "SelAppl": self.applySelAppl,
             "AddIM": self.applyAddIM
         }
-
         if self.current_step in options:
             flag = options[self.current_step]()
             if flag:
@@ -419,6 +381,54 @@ class AffectiveAgent(agentspeak.runtime.Agent):
             else:
                 return True
         return True
+    
+    def affectiveTransitionSystem(self):
+        options = {
+            "Appr" : self.applyAppraisal,
+            "Empa" : self.applyEmpathy,
+            "EmSel" : self.applyEmotionSelection,
+            "UpAs" : self.applyUpdateAffState,
+            "SelCs" : self.applySelectCopingStrategy,
+            "Cope" : self.applyCope
+        }
+        
+        runingAffectiveCycle = True
+        
+        if self.current_step in options:
+            flag = options[self.current_step]()
+            if flag:
+                self.affectiveTransitionSystem()
+            else:
+                return True
+        return True
+    
+    def applyAppraisal(self) -> bool:
+        if random.random() < 0.5:
+            self.current_step = "Empa"
+        else:
+            self.current_step = "EmSel"
+            
+        return True
+
+    def applyEmpathy(self) -> bool:
+        self.current_step = "EmSel"
+        return True
+    
+    def applyEmotionSelection(self) -> bool:
+        self.current_step = "UpAs"
+        return True
+    
+    def applyUpdateAffState(self) -> bool:
+        self.current_step = "SelCs"
+        return True
+    
+    def applySelectCopingStrategy(self) -> bool:
+        self.current_step = "Cope"
+        return True
+    
+    def applyCope(self) -> bool:
+        self.current_step = "Appr"
+        return False
             
     def step(self) -> bool:
         """
@@ -575,6 +585,7 @@ class Environment(agentspeak.runtime.Environment):
             
         """
         
+        print("PASAMOS POR AQUI")
         agent_cls = AffectiveAgent
         
         log = agentspeak.Log(LOGGER, 3)
@@ -583,15 +594,18 @@ class Environment(agentspeak.runtime.Environment):
         # Add rules to agent prototype.
         for ast_rule in ast_agent.rules:
             variables = {}
-            head = ast_rule.head.accept(BuildTermVisitor(variables))
+            head = ast_rule.head.accept(agentspeak.runtime.BuildTermVisitor(variables))
+            print("BuildQueryVisitor rule")
             consequence = ast_rule.consequence.accept(BuildQueryVisitor(variables, actions, log))
             agent.add_rule(agentspeak.runtime.Rule(head, consequence))
+        print(agent.rules)
+        
 
         # Add plans to agent prototype.
         for ast_plan in ast_agent.plans:
             variables = {}
 
-            head = ast_plan.event.head.accept(BuildTermVisitor(variables))
+            head = ast_plan.event.head.accept(agentspeak.runtime.BuildTermVisitor(variables))
 
             if ast_plan.context:
                 context = ast_plan.context.accept(BuildQueryVisitor(variables, actions, log))
@@ -612,14 +626,14 @@ class Environment(agentspeak.runtime.Environment):
             if ast_plan.args[1] is not None:
                 plan.args[1] = ast_plan.args[1]
             agent.add_plan(plan)
-        
+            
+        print("The belief is: ", ast_agent.beliefs)
         # Add beliefs to agent prototype.
         for ast_belief in ast_agent.beliefs:
-            belief = ast_belief.accept(BuildTermVisitor({}))
+            belief = ast_belief.accept(agentspeak.runtime.BuildTermVisitor({}))
             agent.call(agentspeak.Trigger.addition, agentspeak.GoalType.belief,
                        belief, agentspeak.runtime.Intention(), delayed=True)
 
-        
         # Call initial goals on agent prototype. This is init of the reasoning cycle.
         # ProcMsg
         self.ast_agent = ast_agent
@@ -627,19 +641,24 @@ class Environment(agentspeak.runtime.Environment):
         for ast_goal in ast_agent.goals:
             # Start the first part of the reasoning cycle.
             agent.current_step = "SelEv"
-            term = ast_goal.atom.accept(BuildTermVisitor({}))
+            term = ast_goal.atom.accept(agentspeak.runtime.BuildTermVisitor({}))
             agent.C["E"] = [term] if "E" not in agent.C else agent.C["E"] + [term]
+            
+            
+         # Add rules to agent prototype.
+        for concern in ast_agent.concerns:
+            variables = {}
+            head = concern.head.accept(agentspeak.runtime.BuildTermVisitor(variables))
+            consequence = concern.consequence.accept(BuildQueryVisitor(variables, actions, log))
+            agent.add_concern(Concern(head, consequence))
+        print("Agent concerns:", agent.concerns)
 
         # Trying different ways to multiprocess the cycles of the agents
         multiprocesing = "NO" # threading, asyncio, concurrent.futures, NO
-        rc = 500 # number of cycles
-        import time 
+        rc = 1 # number of cycles
         
         if multiprocesing == "threading":
         
-            import threading
-            import time
-
             condition = threading.Condition()
             agent.counter = 0
 
@@ -683,7 +702,7 @@ class Environment(agentspeak.runtime.Environment):
 
         
         elif multiprocesing == "asyncio":
-            import asyncio
+            print("asyncio")
 
             async def hola_thread():
                 print("Start of the thread 1")
@@ -692,14 +711,13 @@ class Environment(agentspeak.runtime.Environment):
                 await self.agent_funcs_done
                 t = time.time() - tiempo_inicial
                 print("End of the thread 1", t)
-                with open("results.txt", "a") as f:
-                    f.write(f"{multiprocesing};{t};{rc} \n")
 
             async def agent_func():
                 # Ejecutar la regla semántica
                 if "E" in agent.C:
                     for i in range(len(agent.C["E"])):
-                        agent.applySemanticRuleDeliberate()
+                        agent.current_step = "Appr"
+                        agent.affectiveTransitionSystem() # 
                 # Sleep 5 seconds
                 await asyncio.sleep(0.001)
                 print("End of the one thread like thread 2")
@@ -710,9 +728,46 @@ class Environment(agentspeak.runtime.Environment):
 
             asyncio.run(main())
             
+        elif multiprocesing == "asyncio2":
+            import asyncio
+
+            async def main():
+                async def affective():
+                    # This function will just sleep for 3 seconds and then set an event
+                    #await asyncio.sleep(3)
+                    print("Starting affecive transition system")
+                    await asyncio.sleep(3)
+                    agent.current_step = "Appr"
+                    agent.affectiveTransitionSystem() 
+                    await asyncio.sleep(5)
+                    event.set()
+                    print("The affecive transition system has finished")
+
+                async def rational():
+                    # This function will wait for the event to be set before continuing its execution
+                    print("Starting rational transition system")
+                    if "E" in agent.C:
+                        for i in range(len(agent.C["E"])):
+                            agent.current_step = "SelEv"
+                            agent.applySemanticRuleDeliberate()
+                    print("Rational transition system is waiting for the affective transition system to finish")
+                    await event.wait()
+                    print("The rational transition system has finished")
+
+                # Create the event that will be used to synchronize the two functions
+                event = asyncio.Event()
+
+                # Create the two tasks that will run the functions
+                task1 = asyncio.create_task(affective())
+                task2 = asyncio.create_task(rational())
+
+                # Wait for both tasks to complete
+                await asyncio.gather(task1, task2)
+
+            # Call the main() function using asyncio.run()
+            asyncio.run(main())
+            
         elif multiprocesing == "concurrent.futures":
-            import concurrent.futures
-            import time
 
             def hola_thread():
                 print("Start of the thread 1")
@@ -783,6 +838,7 @@ class Environment(agentspeak.runtime.Environment):
                 if deadlines:
                     time.sleep(min(deadlines) - self.time())
                     maybe_more_work = True
+                    
 def call(trigger: agentspeak.Trigger, goal_type: agentspeak.GoalType, term: agentspeak.Literal, agent: AffectiveAgent, intention: agentspeak.runtime.Intention):
     """
     This method is used to call the agent
@@ -797,20 +853,10 @@ def call(trigger: agentspeak.Trigger, goal_type: agentspeak.GoalType, term: agen
     """
     return agent.call(trigger, goal_type, term, intention, delayed=False)
 
-############################################################################################################
-#################### Classes from the agentspeak library ###################################################
-############################################################################################################
-
-class BuildTermVisitor(agentspeak.runtime.BuildTermVisitor):
-    pass
-    
-class BuildReplacePatternVisitor(agentspeak.runtime.BuildReplacePatternVisitor):
-    pass
-
 class BuildQueryVisitor(agentspeak.runtime.BuildQueryVisitor):
     
     def visit_literal(self, ast_literal):
-        term = ast_literal.accept(BuildTermVisitor(self.variables))
+        term = ast_literal.accept(agentspeak.runtime.BuildTermVisitor(self.variables))
         try:
             arity = len(ast_literal.terms)
             action_impl = self.actions.lookup(ast_literal.functor, arity)
@@ -820,17 +866,12 @@ class BuildQueryVisitor(agentspeak.runtime.BuildQueryVisitor):
                 self.log.warning("no such action '%s/%d'", ast_literal.functor, arity,
                                  loc=ast_literal.loc,
                                  extra_locs=[t.loc for t in ast_literal.terms])
-            return TermQuery(term)
-
-class BuildEventVisitor(agentspeak.runtime.BuildEventVisitor):
-    pass
+            print(4)
+            return agentspeak.runtime.TermQuery(term)
 
 class TrueQuery(agentspeak.runtime.TrueQuery):
     def __str__(self):
         return "true"
-    
-class FalseQuery(agentspeak.runtime.FalseQuery):
-    pass
 
 class ActionQuery(agentspeak.runtime.ActionQuery):
     
@@ -839,47 +880,32 @@ class ActionQuery(agentspeak.runtime.ActionQuery):
         for _ in self.impl(agent, self.term, intention):
             yield
 
-class TermQuery(agentspeak.runtime.TermQuery):
-    pass
-
-class AndQuery(agentspeak.runtime.AndQuery):
-    pass
-
-class OrQuery(agentspeak.runtime.OrQuery):
-    pass
-
-class NotQuery(agentspeak.runtime.NotQuery):
-    pass
-
-class UnifyQuery(agentspeak.runtime.UnifyQuery):
-    pass
-
 class BuildInstructionsVisitor(agentspeak.runtime.BuildInstructionsVisitor):
     def visit_formula(self, ast_formula):
         if ast_formula.formula_type == agentspeak.FormulaType.add:
-            term = ast_formula.term.accept(BuildTermVisitor(self.variables))
+            term = ast_formula.term.accept(agentspeak.runtime.BuildTermVisitor(self.variables))
             self.add_instr(functools.partial(agentspeak.runtime.add_belief, term),
                            loc=ast_formula.loc, extra_locs=[ast_formula.term.loc])
         elif ast_formula.formula_type == agentspeak.FormulaType.remove:
-            term = ast_formula.term.accept(BuildTermVisitor(self.variables))
+            term = ast_formula.term.accept(agentspeak.runtime.BuildTermVisitor(self.variables))
             self.add_instr(functools.partial(agentspeak.runtime.remove_belief, term))
         elif ast_formula.formula_type == agentspeak.FormulaType.test:
-            term = ast_formula.term.accept(BuildTermVisitor(self.variables))
+            term = ast_formula.term.accept(agentspeak.runtime.BuildTermVisitor(self.variables))
             self.add_instr(functools.partial(agentspeak.runtime.test_belief, term),
                            loc=ast_formula.loc, extra_locs=[ast_formula.term.loc])
         elif ast_formula.formula_type == agentspeak.FormulaType.replace:
-            removal_term = ast_formula.term.accept(BuildReplacePatternVisitor())
+            removal_term = ast_formula.term.accept(agentspeak.runtime.BuildReplacePatternVisitor())
             self.add_instr(functools.partial(agentspeak.runtime.remove_belief, removal_term))
 
-            term = ast_formula.term.accept(BuildTermVisitor(self.variables))
+            term = ast_formula.term.accept(agentspeak.runtime.BuildTermVisitor(self.variables))
             self.add_instr(functools.partial(agentspeak.runtime.add_belief, term),
                            loc=ast_formula.loc, extra_locs=[ast_formula.term.loc])
         elif ast_formula.formula_type == agentspeak.FormulaType.achieve:
-            term = ast_formula.term.accept(BuildTermVisitor(self.variables))
+            term = ast_formula.term.accept(agentspeak.runtime.BuildTermVisitor(self.variables))
             self.add_instr(functools.partial(call, agentspeak.Trigger.addition, agentspeak.GoalType.achievement, term),
                            loc=ast_formula.loc, extra_locs=[ast_formula.term.loc])
         elif ast_formula.formula_type == agentspeak.FormulaType.achieve_later:
-            term = ast_formula.term.accept(BuildTermVisitor(self.variables))
+            term = ast_formula.term.accept(agentspeak.runtime.BuildTermVisitor(self.variables))
             self.add_instr(functools.partial(agentspeak.runtime.call_delayed, agentspeak.Trigger.addition, agentspeak.GoalType.achievement, term),
                            loc=ast_formula.loc, extra_locs=[ast_formula.term.loc])
         elif ast_formula.formula_type == agentspeak.FormulaType.term:
@@ -891,3 +917,39 @@ class BuildInstructionsVisitor(agentspeak.runtime.BuildInstructionsVisitor):
         return self.tail
     
 
+class Concern:
+    def __init__(self, head, query):
+        self.head = head
+        self.query = query
+        
+
+    def __str__(self):
+        return "%s :- %s" % (self.head, self.query)
+    
+    def execute(self, agent):
+        query =  str(self.query)
+        # If there are more than one ( or ) consecutive in query, remove all unless one+
+        import re
+        query = query.replace("(((", "(").replace("((", "(").replace(")))", ")").replace("))", ")")
+        print(query)
+        p = [[ands.strip()[1:]  for ands in ors.split("&") if "=" not in ands] for ors in query.split("|")]
+        o = [ float(ands.split("=")[1].strip()[:-1])  for ors in query.split("|") for ands in ors.split("&") if "=" in ands]
+        
+        
+        for i in range(len(p)):
+            j = []
+            for q in p[i]:
+                
+                for belief in agent.beliefs:
+                    if belief[0] in q and len(q.split()) == belief[1]:
+                        for beliefs in agent.beliefs[belief]:
+                            j.append(all([beliefs.args[arg].functor in q.split()[arg] for arg in range(belief[1])]))
+                            
+            if all(j):
+                 print(i, o[i])
+                 break
+        print(self.head.args[0].evaluate(agentspeak.runtime.Intention().scope)) 
+                
+            
+                                
+            
