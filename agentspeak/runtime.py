@@ -469,7 +469,7 @@ class Agent:
 
     def _unachieve(self, term):
         """
-            UntellHow is a performative that allows the agent to remove and stop an achievement to another agent.
+            Unachieve is a performative that allows the agent to remove and stop an achievement to another agent.
         """
         if not agentspeak.is_literal(term):
                 raise AslError("expected literal term")
@@ -489,7 +489,7 @@ class Agent:
         """
             tellHow is a performative that allows the agent to add a plan to another agent.
         """
-        str_plan = term.args[2]
+        str_plan = term.args[0]
 
         tokens = []
         # extend tokens with the tokens of the string plan
@@ -553,47 +553,26 @@ class Agent:
         if sender_name is None:
             raise AslError("expected source annotation")
 
-        """for annotation in list(term.annots):
-            if isinstance(annotation, str):
-                if "askHow_sender" in annotation:
-                    sender_name = annotation.split("(")[1].split(")")[0]
-        """
-        # Find the plans       
+        # Find the plan that master wants
         plans_wanted = collections.defaultdict(lambda: [])
         plans = self.plans.values()
         for plan in plans:
             for differents in plan:
-                if differents.head.functor in term.args[2]:
+                if differents.head.functor in term.args[0]:
                     plans_wanted[(differents.trigger, differents.goal_type, differents.head.functor, len(differents.head.args))].append(differents)
 
-        # If the agent has any plan that match with the plan wanted, then the agent will send the plan to the agent that asked                       
-        if plans_wanted:
-            intention = agentspeak.runtime.Intention()
-            receivers = agentspeak.grounded(sender_name, intention)
-            if not agentspeak.is_list(receivers):
-                receivers = [receivers]
-            receiving_agents = []
-            for receiver in receivers:
-                if agentspeak.is_atom(receiver):
-                    receiving_agents.append(self.env.agents[receiver.functor])
-                else:
-                    receiving_agents.append(self.env.agents[receiver])
-
-            for plan in plans_wanted.values():
-                for differents in plan:
-                    strplan = plan_to_str(differents)
+        for plan in plans_wanted.values():
+            for differents in plan:
+                strplan = plan_to_str(differents)
                 term.args = (sender_name, "tellHow", strplan)
-                for receiver in receiving_agents:
-                    self._call_ask_how(receiver, term, intention)
-        else:
-            log = agentspeak.Log(LOGGER)
-            raise log.warning(f"The agent not know the plan {term.args[2]}")
+                self._call_ask_how(sender_name, term, Intention())
+
 
     def _untell_how(self, term):
         """
             UntellHow is a performative that allows the agent to remove a plan to another agent.
         """
-        label = term.args[2]
+        label = term.args[0]
 
         plans_to_delete = []
         plans = self.plans.values()
