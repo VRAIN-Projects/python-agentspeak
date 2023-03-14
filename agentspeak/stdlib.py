@@ -142,7 +142,8 @@ def _send(agent, term, intention):
         # It is not a Literal then we don't add the source annotation
         if ilf.functor == "askHow":
             # If the functor is askHow we add to the term an annotation with the name of the sender agent
-            term = term.with_annotation(f"@askHow_sender[name({agent.name})]")
+            term = term.with_annotation(
+                agentspeak.Literal("source", (agentspeak.Literal(agent.name), )))
         tagged_message = term
     else:
         tagged_message = message.with_annotation(

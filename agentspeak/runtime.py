@@ -543,11 +543,21 @@ class Agent:
             We look in the plan.list of the slave agent for the plan that master wants,
             if we find it: master agent use tellHow to tell the plan to slave agent
         """
+        sender_name = None
+
         # Receive the agent that ask for the plan
         for annotation in list(term.annots):
+            if(annotation.functor == "source"):
+                sender_name = annotation.args[0]
+
+        if sender_name is None:
+            raise AslError("expected source annotation")
+
+        """for annotation in list(term.annots):
             if isinstance(annotation, str):
                 if "askHow_sender" in annotation:
                     sender_name = annotation.split("(")[1].split(")")[0]
+        """
         # Find the plans       
         plans_wanted = collections.defaultdict(lambda: [])
         plans = self.plans.values()
