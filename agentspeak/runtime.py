@@ -188,59 +188,32 @@ class ActionQuery:
 class TermQuery:
     def __init__(self, term):
         self.term = term
-        
-    def execute_concerns(self, agent, intention):
-        print(agent.concerns)
-        for concern in agent.concerns.values():
-            print(concern[0], type(concern))
-            
-            term = concern[0].head
-            print(term, type(term))
-        
-        
-        
-        term = agentspeak.evaluate(term, intention.scope)
-        print("term", term)
+       
+    def execute_concern(self, agent, intention, concern):
+        # Boolean constants.
+        term = agentspeak.evaluate(self.term, intention.scope)
         if term is True:
             yield
             return
         elif term is False:
             return
 
-        try:
-            group = term.literal_group()
-        except AttributeError:
-            raise AslError("expected boolean or literal in query context, got: '%s'" % term)
+        choicepoint = object()
+            
+        print(concern, type(concern))
+        concern = copy.deepcopy(concern)
+        intention.stack.append(choicepoint)
+        
 
-        # Query on the belief base.
-        for belief in agent.beliefs[group]:
-            for _ in agentspeak.unify_annotated(term, belief, intention.scope, intention.stack):
+        if agentspeak.unify(term, concern.head, intention.scope, intention.stack):
+            for _ in concern.query.execute(agent, intention):
                 yield
 
-        print(agent.concerns[group])
-        choicepoint = object()
-
-        print(77, agent.concerns[group])
-        for concern in agent.concerns[group]:
-            print(2, agent.beliefs, agent.beliefs[group])
-            concern = copy.deepcopy(concern)
-            print(3, agent.beliefs, agent.beliefs[group])
-            intention.stack.append(choicepoint)
-            print(4, agent.beliefs, agent.beliefs[group])
-            print("concern", concern)
-            print("term", concern.head)
-
-            if agentspeak.unify(term, concern.head, intention.scope, intention.stack):
-                print("concern query ", concern.query, type(concern.query))
-                for _ in concern.query.execute(agent, intention):
-                    yield
-
-            agentspeak.reroll(intention.scope, intention.stack, choicepoint)
-
+        agentspeak.reroll(intention.scope, intention.stack, choicepoint)
+            
     def execute(self, agent, intention):
         # Boolean constants.
         term = agentspeak.evaluate(self.term, intention.scope)
-        print("term", term)
         if term is True:
             yield
             return
@@ -257,22 +230,29 @@ class TermQuery:
             for _ in agentspeak.unify_annotated(term, belief, intention.scope, intention.stack):
                 yield
 
-        print(agent.concerns[group])
-        
         choicepoint = object()
         # Follow concerns.
         for rule in agent.rules[group]:
             rule = copy.deepcopy(rule)
-            print("rule", rule)
             intention.stack.append(choicepoint)
-         
-
             if agentspeak.unify(term, rule.head, intention.scope, intention.stack):
-                print("rule query ", rule.query, type(rule.query))
                 for _ in rule.query.execute(agent, intention):
                     yield
 
             agentspeak.reroll(intention.scope, intention.stack, choicepoint)
+
+            
+        """print([concern for e in agent.concerns.values() for concern in e], "concern group")
+        for concern in [concern for e in agent.concerns.values() for concern in e]:
+            concern = copy.deepcopy(concern)
+            intention.stack.append(choicepoint)
+         
+
+            if agentspeak.unify(term, concern.head, intention.scope, intention.stack):
+                for _ in concern.query.execute(agent, intention):
+                    yield
+
+            agentspeak.reroll(intention.scope, intention.stack, choicepoint)"""
 
     def __str__(self):
         return str(self.term)
@@ -284,7 +264,6 @@ class AndQuery:
         self.right = right
 
     def execute(self, agent, intention):
-        print("and query", self.left, self.right)
         for _ in self.left.execute(agent, intention):
             for _ in self.right.execute(agent, intention):
                 yield
@@ -299,7 +278,6 @@ class OrQuery:
         self.right = right
 
     def execute(self, agent, intention):
-        print("or query", self.left, self.right)
         for _ in self.left.execute(agent, intention):
             yield
 
@@ -318,7 +296,6 @@ class NotQuery:
         choicepoint = object()
         intention.stack.append(choicepoint)
 
-        print("not query", self.query)
         success = any(True for _ in self.query.execute(agent, intention))
 
         agentspeak.reroll(intention.scope, intention.stack, choicepoint)
@@ -653,7 +630,6 @@ class Agent:
 
     def add_belief(self, term, scope):
         term = term.grounded(scope)
-        print("We are adding a belief", term)
 
         if term.functor is None:
             raise AslError("expected belief literal")
@@ -670,9 +646,36 @@ class Agent:
         query = TermQuery(term)
 
         try:
-            print("We are testing a belief", term)
             next(query.execute(self, intention))
             return True
+        except StopIteration:
+            return False
+        
+    def test_concern(self, term, intention, concern):
+        """This function is used to know the value of a concern
+
+        Args:
+            term (Literal): Term of the concern
+            intention (Intention): Intention of the agent
+            concern (Concern): Concern of the agent
+
+        Raises:
+            AslError:  If the term is not a Literal
+
+        Returns:
+            OR[bool, str]: If the concern is not found, return False. If the concern is found, return the value of the concern
+        """
+        term = agentspeak.evaluate(term, intention.scope)
+
+        if not isinstance(term, agentspeak.Literal):
+            raise AslError("expected concern literal, got: '%s'" % term)
+
+        query = TermQuery(term)
+
+        try:
+            next(query.execute_concern(self, intention, concern))
+            concern_value = " ".join(asl_str(agentspeak.freeze(t, intention.scope, {})) for t in term.args)
+            return concern_value
         except StopIteration:
             return False
 
@@ -982,7 +985,6 @@ def call_delayed(trigger, goal_type, term, agent, intention):
 
 
 def push_query(query, agent, intention):
-    print("push_query", type(query), query)
     intention.query_stack.append(query.execute(agent, intention))
     return True
 
@@ -1067,7 +1069,6 @@ class BuildInstructionsVisitor:
             self.add_instr(functools.partial(call_delayed, agentspeak.Trigger.addition, agentspeak.GoalType.achievement, term),
                            loc=ast_formula.loc, extra_locs=[ast_formula.term.loc])
         elif ast_formula.formula_type == agentspeak.FormulaType.term:
-            print("We are in elif ast_formula.formula_type == agentspeak.FormulaType.term:")
             query = ast_formula.term.accept(BuildQueryVisitor(self.variables, self.actions, self.log))
             self.add_instr(functools.partial(push_query, query))
             self.add_instr(next_or_fail, loc=ast_formula.term.loc)
@@ -1076,7 +1077,6 @@ class BuildInstructionsVisitor:
         return self.tail
 
     def visit_for(self, ast_for):
-        print("We are in visit_for(self, ast_for):")
         query = ast_for.generator.accept(BuildQueryVisitor(self.variables, self.actions, self.log))
         self.add_instr(functools.partial(push_query, query))
 
@@ -1090,7 +1090,6 @@ class BuildInstructionsVisitor:
         return self.tail
 
     def visit_if_then_else(self, ast_if_then_else):
-        print("We are in visit_if_then_else(self, ast_if_then_else):")
         query = ast_if_then_else.condition.accept(BuildQueryVisitor(self.variables, self.actions, self.log))
         self.add_instr(functools.partial(push_query, query))
         test_instr = self.add_instr(next_or_fail)
@@ -1116,7 +1115,6 @@ class BuildInstructionsVisitor:
         return self.tail
 
     def visit_while(self, ast_while):
-        print("We are in visit_while(self, ast_while):")
         tail = Instruction(pop_choicepoint)
 
         query = ast_while.condition.accept(BuildQueryVisitor(self.variables, self.actions, self.log))

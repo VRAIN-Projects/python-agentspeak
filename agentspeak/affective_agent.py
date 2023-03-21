@@ -76,7 +76,6 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         
         
     def add_concern(self, concern):
-        print("The query is: ", concern.query)
         concern.execute(self)
         self.concerns[(concern.head.functor, len(concern.head.args))].append(concern)
         
@@ -585,7 +584,6 @@ class Environment(agentspeak.runtime.Environment):
             
         """
         
-        print("PASAMOS POR AQUI")
         agent_cls = AffectiveAgent
         
         log = agentspeak.Log(LOGGER, 3)
@@ -595,10 +593,9 @@ class Environment(agentspeak.runtime.Environment):
         for ast_rule in ast_agent.rules:
             variables = {}
             head = ast_rule.head.accept(agentspeak.runtime.BuildTermVisitor(variables))
-            print("BuildQueryVisitor rule")
             consequence = ast_rule.consequence.accept(BuildQueryVisitor(variables, actions, log))
-            agent.add_rule(agentspeak.runtime.Rule(head, consequence))
-        print(agent.rules)
+            rule = agentspeak.runtime.Rule(head, consequence)
+            agent.add_rule(rule)
         
 
         # Add plans to agent prototype.
@@ -627,7 +624,6 @@ class Environment(agentspeak.runtime.Environment):
                 plan.args[1] = ast_plan.args[1]
             agent.add_plan(plan)
             
-        print("The belief is: ", ast_agent.beliefs)
         # Add beliefs to agent prototype.
         for ast_belief in ast_agent.beliefs:
             belief = ast_belief.accept(agentspeak.runtime.BuildTermVisitor({}))
@@ -643,15 +639,18 @@ class Environment(agentspeak.runtime.Environment):
             agent.current_step = "SelEv"
             term = ast_goal.atom.accept(agentspeak.runtime.BuildTermVisitor({}))
             agent.C["E"] = [term] if "E" not in agent.C else agent.C["E"] + [term]
-            
-            
+                   
          # Add rules to agent prototype.
         for concern in ast_agent.concerns:
             variables = {}
             head = concern.head.accept(agentspeak.runtime.BuildTermVisitor(variables))
             consequence = concern.consequence.accept(BuildQueryVisitor(variables, actions, log))
-            agent.add_concern(Concern(head, consequence))
-        print("Agent concerns:", agent.concerns)
+            concern = Concern(head, consequence)
+            agent.add_concern(concern)
+            concern_value = agent.test_concern(head, agentspeak.runtime.Intention(), concern)
+            print(concern_value)
+            
+            
 
         # Trying different ways to multiprocess the cycles of the agents
         multiprocesing = "NO" # threading, asyncio, concurrent.futures, NO
@@ -664,12 +663,10 @@ class Environment(agentspeak.runtime.Environment):
 
             def hola_thread():
                 with condition:
-                    print("Start of the thread 1")
                     tiempo_inicial = time.time()
                     while agent.counter < rc:
                         condition.wait()
                     t = time.time() - tiempo_inicial
-                    print("End of the thread 1", t)
                     # Open a txt file to save the results
                     with open("results.txt", "a") as f:
                         f.write(f"{multiprocesing};{t};{rc} \n")
@@ -682,7 +679,6 @@ class Environment(agentspeak.runtime.Environment):
                             agent.applySemanticRuleDeliberate()
                     # Sleep 5 seconds
                     time.sleep(0.001)
-                    print("End of the one thread like thread 2")
                     agent.counter += 1
                     if agent.counter == rc:
                         condition.notify()
@@ -702,15 +698,11 @@ class Environment(agentspeak.runtime.Environment):
 
         
         elif multiprocesing == "asyncio":
-            print("asyncio")
-
             async def hola_thread():
-                print("Start of the thread 1")
                 tiempo_inicial = time.time()
                 
                 await self.agent_funcs_done
                 t = time.time() - tiempo_inicial
-                print("End of the thread 1", t)
 
             async def agent_func():
                 # Ejecutar la regla semántica
@@ -720,7 +712,6 @@ class Environment(agentspeak.runtime.Environment):
                         agent.affectiveTransitionSystem() # 
                 # Sleep 5 seconds
                 await asyncio.sleep(0.001)
-                print("End of the one thread like thread 2")
 
             async def main():
                 self.agent_funcs_done = asyncio.gather(*[agent_func() for i in range(rc)])
@@ -735,24 +726,19 @@ class Environment(agentspeak.runtime.Environment):
                 async def affective():
                     # This function will just sleep for 3 seconds and then set an event
                     #await asyncio.sleep(3)
-                    print("Starting affecive transition system")
                     await asyncio.sleep(3)
                     agent.current_step = "Appr"
                     agent.affectiveTransitionSystem() 
                     await asyncio.sleep(5)
                     event.set()
-                    print("The affecive transition system has finished")
 
                 async def rational():
                     # This function will wait for the event to be set before continuing its execution
-                    print("Starting rational transition system")
                     if "E" in agent.C:
                         for i in range(len(agent.C["E"])):
                             agent.current_step = "SelEv"
                             agent.applySemanticRuleDeliberate()
-                    print("Rational transition system is waiting for the affective transition system to finish")
                     await event.wait()
-                    print("The rational transition system has finished")
 
                 # Create the event that will be used to synchronize the two functions
                 event = asyncio.Event()
@@ -770,13 +756,11 @@ class Environment(agentspeak.runtime.Environment):
         elif multiprocesing == "concurrent.futures":
 
             def hola_thread():
-                print("Start of the thread 1")
                 tiempo_inicial = time.time()
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     agent_funcs = [executor.submit(agent_func) for i in range(rc)]
                     concurrent.futures.wait(agent_funcs)
                 t = time.time() - tiempo_inicial
-                print("End of the thread 1", t)
                 with open("results.txt", "a") as f:
                     f.write(f"{multiprocesing};{t};{rc} \n")
             def agent_func():
@@ -786,7 +770,6 @@ class Environment(agentspeak.runtime.Environment):
                         agent.applySemanticRuleDeliberate()
                 # Sleep 5 seconds
                 time.sleep(0.001)
-                print("End of the one thread like thread 2")
 
             hola_thread()
     
@@ -866,7 +849,6 @@ class BuildQueryVisitor(agentspeak.runtime.BuildQueryVisitor):
                 self.log.warning("no such action '%s/%d'", ast_literal.functor, arity,
                                  loc=ast_literal.loc,
                                  extra_locs=[t.loc for t in ast_literal.terms])
-            print(4)
             return agentspeak.runtime.TermQuery(term)
 
 class TrueQuery(agentspeak.runtime.TrueQuery):
@@ -931,7 +913,6 @@ class Concern:
         # If there are more than one ( or ) consecutive in query, remove all unless one+
         import re
         query = query.replace("(((", "(").replace("((", "(").replace(")))", ")").replace("))", ")")
-        print(query)
         p = [[ands.strip()[1:]  for ands in ors.split("&") if "=" not in ands] for ors in query.split("|")]
         o = [ float(ands.split("=")[1].strip()[:-1])  for ors in query.split("|") for ands in ors.split("&") if "=" in ands]
         
@@ -946,9 +927,7 @@ class Concern:
                             j.append(all([beliefs.args[arg].functor in q.split()[arg] for arg in range(belief[1])]))
                             
             if all(j):
-                 print(i, o[i])
                  break
-        print(self.head.args[0].evaluate(agentspeak.runtime.Intention().scope)) 
                 
             
                                 

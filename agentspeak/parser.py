@@ -1000,59 +1000,7 @@ def parse_plan(tok, tokens, log):
         
 
     return tok, plan
-
-class AstConcernqqq():
-    def __init__(self):
-        self.var = None
-        self.var_value = None
-        self.formula = None
-        self.log_expr = []
-        self.posible_values = {}
-    
-    def initialize(self):
-        term = self.formula.term
-        self.posible_values[self.var.name] = []
-         
-        list_expr = []
-        while hasattr(term, "operator") and term.operator.name == "op_or":
-            list_expr.append(term.right)
-            term = term.left
-        list_expr.append(term)        
-        
-        for expr in list_expr:
-            list_expr2 = []
-            while hasattr(expr, "operator") and expr.operator.name == "op_and":
-                print(hasattr(expr.right, "operator") , expr.right.operator.name == "op_unify")
-                if hasattr(expr.right, "operator") and expr.right.operator.name == "op_unify":
-                    self.posible_values[expr.right.left.name].append(expr.right.right.value)
-                else:
-                    list_expr2.append(expr.right)
-                expr = expr.left
-                
-            if hasattr(expr, "operator") and expr.operator.name == "op_unify":
-                    self.posible_values[expr.left.name].append(expr.right.value)
-            else:
-                list_expr2.append(expr)
-            
-            self.log_expr.append(list_expr2)
-        
-    def check(self, beliefs):
-        for log_expr_id in range(len(self.log_expr)):
-            op_expr = True
-            for expr in self.log_expr[log_expr_id]:
-                
-                values = [i.args for i in beliefs[(expr.functor, len(expr.terms))]]
-                op_expr = False if len(values) == 0 else op_expr
-                for value in values:
-                    for j in range(len(expr.terms)):
-                        if value[j] != expr.terms[j].value:
-                            op_expr = False
-                if op_expr == False:
-                    break
-            if op_expr == True:
-                #print("Esta coincide", self.log_expr[log_expr_id])
-                #print("La variable tomaría el valor de", [self.posible_values[i][log_expr_id] for i in self.posible_values.keys()])
-                pass
+   
                     
 class AstConcern(AstNode):
     def __init__(self):
