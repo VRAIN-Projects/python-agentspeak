@@ -383,7 +383,6 @@ def reroll(scope, stack, choicepoint):
             # Ignores other choicepoints.
             scope.pop(t, None)
 
-
 class Var(object):
     def unify(self, right, scope, stack):
         if self in scope:

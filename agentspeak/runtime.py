@@ -723,8 +723,16 @@ def plan_to_str(plan):
     body = plan.str_body
     head = str(plan.head)
     start = 0
-    
-    if "_X_" in head:
+    replace_variables = False
+
+    # Comment 3
+    # Check if the head has variables
+    for arg in plan.head.args:
+        if isinstance(arg, agentspeak.Var):
+            replace_variables = True
+            break
+
+    if replace_variables:
         if plan.args[0] != None:
             first_open, first_close = head.find("(",start), head.find(")", start)
             if  "(" in str(plan.args[0]):
