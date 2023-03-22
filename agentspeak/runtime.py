@@ -534,8 +534,8 @@ class Agent:
 
         self.add_plan(plan)
 
-    def _call_ask_how(self, receiver, term, intention):
-        receiver.call(agentspeak.Trigger.addition, agentspeak.GoalType.tellHow, term, intention)
+    def _call_ask_how(self, receiver, message, intention):
+        receiver.call(agentspeak.Trigger.addition, agentspeak.GoalType.tellHow, message, intention)
 
     def _ask_how(self, term):
         """
@@ -548,12 +548,11 @@ class Agent:
         # Receive the agent that ask for the plan
         for annotation in list(term.annots):
             if(annotation.functor == "source"):
-                sender_name = annotation.args[0]
+                sender_name = annotation.args[0].functor
 
         if sender_name is None:
             raise AslError("expected source annotation")
 
-        # Find the plan that master wants
         plans_wanted = collections.defaultdict(lambda: [])
         plans = self.plans.values()
         for plan in plans:
@@ -561,11 +560,30 @@ class Agent:
                 if differents.head.functor in term.args[0]:
                     plans_wanted[(differents.trigger, differents.goal_type, differents.head.functor, len(differents.head.args))].append(differents)
 
-        for plan in plans_wanted.values():
-            for differents in plan:
-                strplan = plan_to_str(differents)
-                term.args = (sender_name, "tellHow", strplan)
-                self._call_ask_how(sender_name, term, Intention())
+        # If the agent has any plan that match with the plan wanted, then the agent will send the plan to the agent that asked                       
+        if plans_wanted:
+            intention = agentspeak.runtime.Intention()
+            receivers = agentspeak.grounded(sender_name, intention)
+            if not agentspeak.is_list(receivers):
+                receivers = [receivers]
+            receiving_agents = []
+            for receiver in receivers:
+                if agentspeak.is_atom(receiver):
+                    receiving_agents.append(self.env.agents[receiver.functor])
+                else:
+                    receiving_agents.append(self.env.agents[receiver])
+
+            for plan in plans_wanted.values():
+                for differents in plan:
+                    strplan = plan_to_str(differents)
+                    message = agentspeak.Literal("plain_text", (strplan,), frozenset())
+                    tagged_message = message.with_annotation(
+                        agentspeak.Literal("source", (agentspeak.Literal(sender_name), )))
+                for receiver in receiving_agents:
+                    self._call_ask_how(receiver, tagged_message, intention)
+        else:
+            log = agentspeak.Log(LOGGER)
+            raise log.warning(f"The agent not know the plan {term.args[2]}")
 
 
     def _untell_how(self, term):
