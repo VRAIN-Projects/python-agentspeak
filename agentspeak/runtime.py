@@ -577,10 +577,8 @@ class Agent:
                 for differents in plan:
                     strplan = plan_to_str(differents)
                     message = agentspeak.Literal("plain_text", (strplan,), frozenset())
-                    tagged_message = message.with_annotation(
-                        agentspeak.Literal("source", (agentspeak.Literal(sender_name), )))
                 for receiver in receiving_agents:
-                    self._call_ask_how(receiver, tagged_message, intention)
+                    self._call_ask_how(receiver, message, intention)
         else:
             log = agentspeak.Log(LOGGER)
             raise log.warning(f"The agent not know the plan {term.args[2]}")
