@@ -582,9 +582,10 @@ class Agent:
         """
         label = term.args[2]
 
-        plans_to_delete = []
+        
         plans = self.plans.values()
         for plan in plans:
+            plans_to_delete = []
             for plan_instance in plan:
                 if len(plan_instance.annotation) > 0:
                     if ("@" + str(plan_instance.annotation[0].functor)).startswith(label):
@@ -723,6 +724,8 @@ def plan_to_str(plan):
     if len(plan.head.args):
         pattern = r"_X_[0-9a-fA-F]{3}_[0-9a-fA-F]{11}"        
         head = re.sub(pattern, lambda m: plan.args.pop(0), str(plan.head))
+    else:
+        head = str(plan.head)
 
     if plan.annotation:
         label = str(plan.annotation[0])
