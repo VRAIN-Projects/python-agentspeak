@@ -76,7 +76,9 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         
         
     def add_concern(self, concern):
-        concern.execute(self)
+        """ 
+        This method is used to add a concern to the agent.
+        """
         self.concerns[(concern.head.functor, len(concern.head.args))].append(concern)
         
     def call(self, trigger: agentspeak.Trigger, goal_type:agentspeak.GoalType, term: agentspeak.Literal, calling_intention: agentspeak.runtime.Intention, delayed: bool = False):
@@ -400,8 +402,64 @@ class AffectiveAgent(agentspeak.runtime.Agent):
             else:
                 return True
         return True
-    
+            
     def applyAppraisal(self) -> bool:
+        """
+        JAVA IMPLEMENTATION:
+        
+        private void applyAppraisal() {
+        logger.fine("-->> Doing appraisal state <<-- "+" thread "+Thread.currentThread().getName());
+        appCycleNo++;
+
+        PairEventDesirability ped = null; 
+        synchronized (getLock()){
+            ped = eventsToProcess.poll();
+        }
+
+        if (ped == null){
+                logger.fine("Doing Appraisal of event: null ... "+emEngine.getClass().getName());
+                emEngine.appraisal(null,0.0);
+                currentEvent = null;
+                eventProcessedInCycle = false;
+            }
+        else{
+                logger.fine("Doing Appraisal of event: " + ped.event+" ... "+emEngine.getClass().getName());
+                eventProcessedInCycle = emEngine.appraisal(ped.event,ped.desirability);
+                currentEvent = ped.event;
+            }
+        
+        if (emEngine.cleanAffectivelyRelevantEvents())
+            getC().getMEM().clear();
+
+        //logger.fine("APPRAISAL VARIABLES "+getC().getAV().getValues());
+        step = State.UpAs;
+
+        }
+        """
+        
+        ped = PairEventDesirability(None)
+        with True: # self.lock instead of True for the real implementation
+            if self.C["E"]:
+                ped = self.C["E"].popleft()
+            
+        if ped.event == None:
+            self.emEngine.appraisal(None, 0.0) # emEngine is not implemented yet
+            self.currentEvent = None
+            self.eventProcessedInCycle = False
+        else:
+            self.emEngine.appraisal(ped.event, ped.desirability) # emEngine is not implemented yet
+            self.currentEvent = ped.event
+            self.eventProcessedInCycle = True
+            
+        if self.emEngine.cleanAffectivelyRelevantEvents(): # emEngine is not implemented yet
+            # Clear the memory of the agent
+            self.Mem = {}  
+        
+        # The next step is Update Aff State
+        self.current_step = "UpAs"
+        return True
+        
+
         if random.random() < 0.5:
             self.current_step = "Empa"
         else:
@@ -656,48 +714,7 @@ class Environment(agentspeak.runtime.Environment):
         multiprocesing = "NO" # threading, asyncio, concurrent.futures, NO
         rc = 1 # number of cycles
         
-        if multiprocesing == "threading":
-        
-            condition = threading.Condition()
-            agent.counter = 0
-
-            def hola_thread():
-                with condition:
-                    tiempo_inicial = time.time()
-                    while agent.counter < rc:
-                        condition.wait()
-                    t = time.time() - tiempo_inicial
-                    # Open a txt file to save the results
-                    with open("results.txt", "a") as f:
-                        f.write(f"{multiprocesing};{t};{rc} \n")
-
-            def agent_func():
-                with condition:
-                    # Ejecutar la regla semántica (commented out since `agent` and `agent.C` are undefined in this code)
-                    if "E" in agent.C:
-                        for i in range(len(agent.C["E"])):
-                            agent.applySemanticRuleDeliberate()
-                    # Sleep 5 seconds
-                    time.sleep(0.001)
-                    agent.counter += 1
-                    if agent.counter == rc:
-                        condition.notify()
-
-            t1 = threading.Thread(target=hola_thread)
-            t1.start()
-
-            threads = []
-            for i in range(rc):
-                t2 = threading.Thread(target=agent_func)
-                threads.append(t2)
-                t2.start()
-
-            for t in threads:
-                t.join()
-            t1.join()
-
-        
-        elif multiprocesing == "asyncio":
+        if multiprocesing == "asyncio":
             async def hola_thread():
                 tiempo_inicial = time.time()
                 
@@ -753,26 +770,6 @@ class Environment(agentspeak.runtime.Environment):
             # Call the main() function using asyncio.run()
             asyncio.run(main())
             
-        elif multiprocesing == "concurrent.futures":
-
-            def hola_thread():
-                tiempo_inicial = time.time()
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    agent_funcs = [executor.submit(agent_func) for i in range(rc)]
-                    concurrent.futures.wait(agent_funcs)
-                t = time.time() - tiempo_inicial
-                with open("results.txt", "a") as f:
-                    f.write(f"{multiprocesing};{t};{rc} \n")
-            def agent_func():
-                # Ejecutar la regla semántica
-                if "E" in agent.C:
-                    for i in range(len(agent.C["E"])):
-                        agent.applySemanticRuleDeliberate()
-                # Sleep 5 seconds
-                time.sleep(0.001)
-
-            hola_thread()
-    
         else: 
             if "E" in agent.C:
                 for i in range(len(agent.C["E"])):   
@@ -900,7 +897,10 @@ class BuildInstructionsVisitor(agentspeak.runtime.BuildInstructionsVisitor):
     
 
 class Concern:
-    def __init__(self, head, query):
+    """
+    This class is used to represent the concern of the agent
+    """ 
+    def __init__(self, head, query):         
         self.head = head
         self.query = query
         
@@ -908,27 +908,11 @@ class Concern:
     def __str__(self):
         return "%s :- %s" % (self.head, self.query)
     
-    def execute(self, agent):
-        query =  str(self.query)
-        # If there are more than one ( or ) consecutive in query, remove all unless one+
-        import re
-        query = query.replace("(((", "(").replace("((", "(").replace(")))", ")").replace("))", ")")
-        p = [[ands.strip()[1:]  for ands in ors.split("&") if "=" not in ands] for ors in query.split("|")]
-        o = [ float(ands.split("=")[1].strip()[:-1])  for ors in query.split("|") for ands in ors.split("&") if "=" in ands]
-        
-        
-        for i in range(len(p)):
-            j = []
-            for q in p[i]:
                 
-                for belief in agent.beliefs:
-                    if belief[0] in q and len(q.split()) == belief[1]:
-                        for beliefs in agent.beliefs[belief]:
-                            j.append(all([beliefs.args[arg].functor in q.split()[arg] for arg in range(belief[1])]))
-                            
-            if all(j):
-                 break
-                
-            
+class PairEventDesirability:
+        def __init__(self, event):
+            self.event = event
+            # For now, the desirability is a random number between 0 and 1
+            self.desirability = random.random()   
                                 
             

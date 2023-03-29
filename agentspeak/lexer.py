@@ -67,7 +67,7 @@ class TokenType(enum.Enum):
                 space comment
                 paren_open paren_close
                 bracket_open bracket_close
-                brace_open brace_close concern concern_sep
+                brace_open brace_close concern
                 functor numeric variable string
                 lit_true lit_false
                 tok_if tok_else tok_while tok_for
@@ -92,7 +92,6 @@ class TokenType(enum.Enum):
     brace_open    = Token(r"{")
     brace_close   = Token(r"}")
     concern       = Token(r"concern__")
-    concern_sep     = Token(r":-")
 
     functor       = Token(r"(~?(?!(true|false|not|div|mod|if|else|while|for|include|begin|end)($|[^a-zA-Z0-9_]))((\.?[a-z][a-zA-Z0-9_]*)+))", functor=True)
     numeric       = Token(r"((\d*\.\d+|\d+)([eE][+-]?\d+)?)", numeric=True)
