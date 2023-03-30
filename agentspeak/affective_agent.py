@@ -402,6 +402,100 @@ class AffectiveAgent(agentspeak.runtime.Agent):
             else:
                 return True
         return True
+    
+    def appraisal(event, concern_value):
+        """
+        JAVA IMPLEMENTATION:
+        
+        public boolean appraisal(Event E, Double concernsValue) {
+        selectingCs = true;
+        boolean result = false;
+        if (E != null){
+            logger.fine("E.getTrigger().getLiteral() "+E.getTrigger().getLiteral()
+                +" is Addition "+E.getTrigger().isAddition());
+            if (E.getTrigger().getOperator() == TEOperator.del || //evaluating only adding or removing events
+                    E.getTrigger().isAddition()) 
+            {
+                /* Calculating desirability */
+                Double desirability =  desirability( E);
+                logger.fine("Desirability of event "+E.getTrigger().getFunctor()+" : "+desirability);
+                getC().getAV().setAppraisalVariable(AppraisalVarLabels.desirability.name(),desirability);
+
+                /* Calculating expectedness */
+                getC().getAV().setAppraisalVariable(AppraisalVarLabels.expectedness.name(),  expectedness(E, true));
+
+                /* Calculating likelihood. It is always if the event is a belief to add (a fact) */
+                getC().getAV().setAppraisalVariable(AppraisalVarLabels.likelihood.name(),  likelihood(E));
+
+                /* Calculating causal attribution */
+                getC().getAV().setAppraisalVariable(AppraisalVarLabels.causal_attribution.name(), (double)causalAttribution(E).ordinal());
+
+                /* Calculating controllability: "can the outcome be altered by actions under control of the agent whose
+                 * perspective is taking" */
+                getC().getAV().setAppraisalVariable(AppraisalVarLabels.controllability.name(), controllability(E,concernsValue,desirability));
+             result = true  ;
+            }
+        }
+        else{
+            getC().getAV().setAppraisalVariable(AppraisalVarLabels.desirability.name(),null);
+            getC().getAV().setAppraisalVariable(AppraisalVarLabels.expectedness.name(),  null);
+            getC().getAV().setAppraisalVariable(AppraisalVarLabels.likelihood.name(),  null);
+            getC().getAV().setAppraisalVariable(AppraisalVarLabels.causal_attribution.name(), null);
+            getC().getAV().setAppraisalVariable(AppraisalVarLabels.controllability.name(), null);
+        }
+        return result;
+        }
+
+        """
+        pass
+    
+    def desirability(self, event):
+        """
+        JAVA IMPLEMENTATION:
+        
+        public Double desirability(Event event){
+        Double concernVal = null;
+        Literal concern = ag.getConcern(); # This function return the first concern of the agent
+
+        if(concern != null){
+            if (!event.getTrigger().isGoal()){ # If the event is not a goal
+                if (event.getTrigger().getOperator()==TEOperator.add ){  # If the event is an addition of a belief
+                    //adding the new literal if the event is an addition of a belief
+                    concernVal = applyConcernForAddition(event,concern);
+                }
+                else
+                    if (event.getTrigger().getOperator()==TEOperator.del) 
+                        concernVal = applyConcernForDeletion(event,concern);
+            }
+            
+            if (concernVal!=null){
+                if (concernVal<0 || concernVal>1){
+                    concernVal = null;
+                    logger.log(Level.WARNING, "Desirability can't be calculated. Concerns value out or range [0,1]!");
+                }
+                    
+            }
+        }
+        return concernVal;
+        
+        }
+
+        """
+        """public Double desirability(Event event){
+        Double concernVal = null;
+        Literal concern = ag.getConcern();"""
+        concern = self.concerns.pop()
+        if concern is not None:
+            if not event.is_belief == agentspeak.GoalType.belief:
+                if event.trigger.operator == "add":
+                    concernVal = self.applyConcernForAddition(event, concern)
+                elif event.trigger.operator == "del":
+                    concernVal = self.applyConcernForDeletion(event, concern)
+            if concernVal is not None:
+                if concernVal < 0 or concernVal > 1:
+                    concernVal = None
+                    logger.log(Level.WARNING, "Desirability can't be calculated. Concerns value out or range [0,1]!")
+        
             
     def applyAppraisal(self) -> bool:
         """
