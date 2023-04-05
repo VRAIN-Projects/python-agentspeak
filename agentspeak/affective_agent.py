@@ -112,8 +112,12 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         
         If the event is a askHow addition, we ask the agent how to do it.
         """
-        # Modify beliefs.        
+        # Modify beliefs.       
+        print("The trigger is: ", trigger) 
+        print("The term is: ", term)
         if goal_type == agentspeak.GoalType.belief: 
+            # We recieve a belief and the affective cycle is activated.
+            # We need to provide to the sunction the term and the Trigger type.
             if trigger == agentspeak.Trigger.addition: 
                 self.add_belief(term, calling_intention.scope)
             else: 
@@ -447,6 +451,30 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         }
 
         """
+        # Translating the java code to python
+        selectingCs = True
+        result = False
+        if event.event != None:
+            # The event is an addition or a deletion of a belief
+            
+                # Calculating desirability
+                desirability =  desirability(event)
+                event["AV"]["desirability"] = desirability
+                print("Desirability of event "+event.event+" : "+event["AV"]["desirability"])
+
+                # Calculating expectedness
+                #self.C["AV"].setAppraisalVariable("expectedness",  expectedness(event, True))
+
+                # Calculating likelihood. It is always if the event is a belief to add (a fact)
+                #self.C["AV"].setAppraisalVariable("likelihood",  likelihood(event))
+
+                # Calculating causal attribution
+                #self.C["AV"].setAppraisalVariable("causal_attribution", causalAttribution(event))
+
+                # Calculating controllability: "can the outcome be altered by actions under control of the agent whose
+                # perspective is taking"
+                #self.C["AV"].setAppraisalVariable("controllability", controllability(event,concern_value,desirability))
+                result = True
         pass
     
     def desirability(self, event):
@@ -481,22 +509,128 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         }
 
         """
-        """public Double desirability(Event event){
-        Double concernVal = null;
-        Literal concern = ag.getConcern();"""
-        concern = self.concerns.pop()
-        if concern is not None:
-            if not event.is_belief == agentspeak.GoalType.belief:
-                if event.trigger.operator == "add":
-                    concernVal = self.applyConcernForAddition(event, concern)
-                elif event.trigger.operator == "del":
-                    concernVal = self.applyConcernForDeletion(event, concern)
-            if concernVal is not None:
+        # Translating the java code to python
+        concernVal = None
+        concern = self.agent.concerns[0] # This function return the first concern of the agent
+         
+        if concern != None:
+            if event.type == agentspeak.Trigger.addition:
+                # adding the new literal if the event is an addition of a belief
+                concernVal = self.applyConcernForAddition(event,concern) # Not implemented yet
+            else:
+                concernVal = self.applyConcernForDeletion(event,concern) # Not implemented yet
+                
+            if concernVal != None:
                 if concernVal < 0 or concernVal > 1:
                     concernVal = None
-                    logger.log(Level.WARNING, "Desirability can't be calculated. Concerns value out or range [0,1]!")
+                    print("Desirability can't be calculated. Concerns value out or range [0,1]!")
+                    
+        return concernVal
+    
+    def applyConcernForAddition(self, event, concern):
+        """
         
+        JAVA IMPLEMENTATION:
+        
+         /** Gets the <i>concern</i>'s value for <i>event</i> when it is an addition event 
+        * @param event Addition event
+        * @param concern Concern whose value should be evaluated
+        * */
+        public Double applyConcernForAddition(Event event, LogicalFormula concern){
+            Double result = null;
+            Literal tmpLit = null; 
+            Literal eventLiteral = event.getTrigger().getLiteral();
+            Intention I = getC().getSelectedIntention();
+            Unifier un = new Unifier();
+            if (I != null){
+                IntendedMeans Im = I.peek();
+                if (Im!=null)
+                    un = Im.getUnif();
+            }
+
+
+            Iterator<Unifier> unIt;
+            synchronized (ag.getBB().getLock()){
+                Literal l = ag.getBB().contains(eventLiteral);
+                if (l!=null){
+                    tmpLit = (Literal) l.clone();
+                    ag.getBB().remove(tmpLit);
+                    }
+                ag.getBB().add(eventLiteral);
+                
+                LogicalFormula f = (LogicalFormula)concern;
+                unIt = f.logicalConsequence(ag, un);
+                
+                if (unIt!=null && unIt.hasNext()){
+                    Unifier un1 = unIt.next();
+                    Term t =  (un1.get( (VarTerm) ((Literal)concern).getTerm(0)));
+                    result =((NumberTermImpl)t).solve();
+                }
+                
+                ag.getBB().remove(eventLiteral);
+                if (l!=null)
+                    ag.getBB().add(tmpLit);
+            }
+            return result;
+            }
+
+        """
             
+        # Translating the java code to python
+        
+        # We add the new belief to the agent's belief base, so we can calculate the concern value
+        # We calculate the concern value
+        # We remove the belief from the agent's belief base again
+        
+        
+        
+        
+    def applyConcernForDeletion(self, event, concern):
+        """
+
+        JAVA IMPLEMENTATION:
+        
+            /** Gets the <i>concern</i>'s value for <i>event</i> when it is a deletion event 
+            * @param event Deletion event
+            * @param concern Concern whose value should be evaluated
+            * */
+            public Double applyConcernForDeletion(Event event, LogicalFormula concern){
+                Literal tmpLit = null; 
+                Literal eventLiteral = event.getTrigger().getLiteral();
+                Unifier un = new Unifier();
+                Iterator<Unifier> unIt;
+                Double result = null;
+                synchronized (ag.getBB().getLock()){
+                    Literal l =ag.getBB().contains(eventLiteral);
+                    if (l!=null){
+                        tmpLit = (Literal) l.clone();
+                        ag.getBB().remove(tmpLit);
+                        }
+                    unIt = concern.logicalConsequence(ag, un);
+                    if (unIt!=null && unIt.hasNext()){
+                        Unifier un1 = unIt.next();
+                        Term t =  (un1.get( (VarTerm) ((Literal)concern).getTerm(0)));
+                        result =((NumberTermImpl)t).solve();
+                    }
+                    if (l!=null)
+                        ag.getBB().add(tmpLit);
+                }
+                return result;
+            }
+            
+        }
+
+        """
+        
+        # Translating the java code to python
+         
+        # We remove the belief from the agent's belief base, so we can calculate the concern value
+        # We calculate the concern value
+        # We add the belief to the agent's belief base again
+        
+         
+            
+    
     def applyAppraisal(self) -> bool:
         """
         JAVA IMPLEMENTATION:
@@ -534,7 +668,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         ped = PairEventDesirability(None)
         with True: # self.lock instead of True for the real implementation
             if self.C["E"]:
-                ped = self.C["E"].popleft()
+                ped.event = self.C["E"].popleft()
             
         if ped.event == None:
             self.emEngine.appraisal(None, 0.0) # emEngine is not implemented yet
@@ -1008,5 +1142,7 @@ class PairEventDesirability:
             self.event = event
             # For now, the desirability is a random number between 0 and 1
             self.desirability = random.random()   
+            self.type = agentspeak.Trigger.addition
+            self["AV"] = {"desirability": None}
                                 
             
