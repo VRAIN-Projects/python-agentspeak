@@ -74,6 +74,8 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         
         self.concerns = collections.defaultdict(lambda: []) if concerns is None else concerns
         
+        self.event_queue = []
+        
         
     def add_concern(self, concern):
         """ 
@@ -113,11 +115,10 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         If the event is a askHow addition, we ask the agent how to do it.
         """
         # Modify beliefs.       
-        print("The trigger is: ", trigger) 
-        print("The term is: ", term)
         if goal_type == agentspeak.GoalType.belief: 
             # We recieve a belief and the affective cycle is activated.
             # We need to provide to the sunction the term and the Trigger type.
+            self.event_queue.append((term, trigger))
             if trigger == agentspeak.Trigger.addition: 
                 self.add_belief(term, calling_intention.scope)
             else: 
@@ -407,7 +408,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
                 return True
         return True
     
-    def appraisal(event, concern_value):
+    def appraisal(self, event, concern_value):
         """
         JAVA IMPLEMENTATION:
         
@@ -454,12 +455,12 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         # Translating the java code to python
         selectingCs = True
         result = False
-        if event.event != None:
+        if event != None:
             # The event is an addition or a deletion of a belief
             
                 # Calculating desirability
                 desirability =  desirability(event)
-                event["AV"]["desirability"] = desirability
+                event.AV["desirability"] = desirability
                 print("Desirability of event "+event.event+" : "+event["AV"]["desirability"])
 
                 # Calculating expectedness
@@ -579,8 +580,13 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         # Translating the java code to python
         
         # We add the new belief to the agent's belief base, so we can calculate the concern value
+        self.add_belief(event, agentspeak.runtime.Intention().scope)
         # We calculate the concern value
+        concern_value = self.test_concern(concern.head, agentspeak.runtime.Intention(), concern)
         # We remove the belief from the agent's belief base again
+        self.remove_belief(event, agentspeak.runtime.Intention())
+
+        return concern_value 
         
         
         
@@ -623,10 +629,15 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         """
         
         # Translating the java code to python
-         
+
         # We remove the belief from the agent's belief base, so we can calculate the concern value
+        self.remove_belief(event, agentspeak.runtime.Intention())
         # We calculate the concern value
+        concern_value = self.test_concern(concern.head, agentspeak.runtime.Intention(), concern)
         # We add the belief to the agent's belief base again
+        self.add_belief(event, agentspeak.runtime.Intention())
+        
+        return concern_value 
         
          
             
@@ -666,21 +677,21 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         """
         
         ped = PairEventDesirability(None)
-        with True: # self.lock instead of True for the real implementation
-            if self.C["E"]:
-                ped.event = self.C["E"].popleft()
+        if True: # while self.lock instead of True for the real implementation
+            print(self.C)
+            if self.event_queue:
+                ped.event = self.event_queue.popleft()
             
         if ped.event == None:
-            self.emEngine.appraisal(None, 0.0) # emEngine is not implemented yet
+            self.appraisal(None, 0.0) # emEngine is not implemented yet
             self.currentEvent = None
             self.eventProcessedInCycle = False
         else:
-            self.emEngine.appraisal(ped.event, ped.desirability) # emEngine is not implemented yet
+            self.appraisal(ped.event, ped.desirability) # emEngine is not implemented yet
             self.currentEvent = ped.event
             self.eventProcessedInCycle = True
             
-        if self.emEngine.cleanAffectivelyRelevantEvents(): # emEngine is not implemented yet
-            # Clear the memory of the agent
+        if self.cleanAffectivelyRelevantEvents(): # emEngine is not implemented yet
             self.Mem = {}  
         
         # The next step is Update Aff State
@@ -694,6 +705,19 @@ class AffectiveAgent(agentspeak.runtime.Agent):
             self.current_step = "EmSel"
             
         return True
+    
+    def cleanAffectivelyRelevantEvents(self) -> bool:
+        """
+        # JAVA IMPLEMENTATION:
+        
+        public abstract boolean cleanAffectivelyRelevantEvents();
+            /**
+            * @return True if it is necessary go on selecting and executing 
+            * coping strategies 
+            */
+        """
+        return True
+        
 
     def applyEmpathy(self) -> bool:
         self.current_step = "EmSel"
@@ -939,7 +963,7 @@ class Environment(agentspeak.runtime.Environment):
             
 
         # Trying different ways to multiprocess the cycles of the agents
-        multiprocesing = "NO" # threading, asyncio, concurrent.futures, NO
+        multiprocesing = "asyncio2" # threading, asyncio, concurrent.futures, NO
         rc = 1 # number of cycles
         
         if multiprocesing == "asyncio":
@@ -1143,6 +1167,6 @@ class PairEventDesirability:
             # For now, the desirability is a random number between 0 and 1
             self.desirability = random.random()   
             self.type = agentspeak.Trigger.addition
-            self["AV"] = {"desirability": None}
+            self.AV = {"desirability": None} 
                                 
             
