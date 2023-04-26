@@ -75,7 +75,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         self.concerns = collections.defaultdict(lambda: []) if concerns is None else concerns
         
         self.event_queue = []
-        
+        self.AV = {"desirability": None} 
         
     def add_concern(self, concern):
         """ 
@@ -459,9 +459,9 @@ class AffectiveAgent(agentspeak.runtime.Agent):
             # The event is an addition or a deletion of a belief
             
                 # Calculating desirability
-                desirability =  desirability(event)
-                event.AV["desirability"] = desirability
-                print("Desirability of event "+event.event+" : "+event["AV"]["desirability"])
+                desirability =  self.desirability(event)
+                self.AV["desirability"] = desirability
+                print("Desirability of event ",event[0], " : ",self.AV["desirability"])
 
                 # Calculating expectedness
                 #self.C["AV"].setAppraisalVariable("expectedness",  expectedness(event, True))
@@ -512,21 +512,23 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         """
         # Translating the java code to python
         concernVal = None
-        concern = self.agent.concerns[0] # This function return the first concern of the agent
+        concern = self.concerns[("concern__",1)][0] # This function return the first concern of the agent
+        
          
         if concern != None:
-            if event.type == agentspeak.Trigger.addition:
+            print(event)
+            if event[1].name == "addition":
                 # adding the new literal if the event is an addition of a belief
                 concernVal = self.applyConcernForAddition(event,concern) # Not implemented yet
             else:
                 concernVal = self.applyConcernForDeletion(event,concern) # Not implemented yet
                 
             if concernVal != None:
-                if concernVal < 0 or concernVal > 1:
+                if float(concernVal) < 0 or float(concernVal) > 1:
                     concernVal = None
                     print("Desirability can't be calculated. Concerns value out or range [0,1]!")
                     
-        return concernVal
+        return float(concernVal)
     
     def applyConcernForAddition(self, event, concern):
         """
@@ -578,13 +580,14 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         """
             
         # Translating the java code to python
-        
+        print(concern)
         # We add the new belief to the agent's belief base, so we can calculate the concern value
-        self.add_belief(event, agentspeak.runtime.Intention().scope)
+        self.add_belief(event[0], agentspeak.runtime.Intention().scope)
         # We calculate the concern value
         concern_value = self.test_concern(concern.head, agentspeak.runtime.Intention(), concern)
+        print("Concern value: "+str(concern_value))
         # We remove the belief from the agent's belief base again
-        self.remove_belief(event, agentspeak.runtime.Intention())
+        self.remove_belief(event[0], agentspeak.runtime.Intention())
 
         return concern_value 
         
@@ -679,15 +682,16 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         ped = PairEventDesirability(None)
         if True: # while self.lock instead of True for the real implementation
             print(self.C)
+            print(self.event_queue)
             if self.event_queue:
-                ped.event = self.event_queue.popleft()
+                ped.event = self.event_queue.pop()
             
         if ped.event == None:
             self.appraisal(None, 0.0) # emEngine is not implemented yet
             self.currentEvent = None
             self.eventProcessedInCycle = False
         else:
-            self.appraisal(ped.event, ped.desirability) # emEngine is not implemented yet
+            self.appraisal(ped.event, random.random()) # emEngine is not implemented yet
             self.currentEvent = ped.event
             self.eventProcessedInCycle = True
             
@@ -1164,9 +1168,6 @@ class Concern:
 class PairEventDesirability:
         def __init__(self, event):
             self.event = event
-            # For now, the desirability is a random number between 0 and 1
-            self.desirability = random.random()   
-            self.type = agentspeak.Trigger.addition
             self.AV = {"desirability": None} 
                                 
             
