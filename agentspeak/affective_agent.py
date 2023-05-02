@@ -119,6 +119,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
             # We recieve a belief and the affective cycle is activated.
             # We need to provide to the sunction the term and the Trigger type.
             self.event_queue.append((term, trigger))
+            self.appraisal((term, trigger),0)
             if trigger == agentspeak.Trigger.addition: 
                 self.add_belief(term, calling_intention.scope)
             else: 
@@ -459,9 +460,10 @@ class AffectiveAgent(agentspeak.runtime.Agent):
             # The event is an addition or a deletion of a belief
             
                 # Calculating desirability
-                desirability =  self.desirability(event)
-                self.AV["desirability"] = desirability
-                print("Desirability of event ",event[0], " : ",self.AV["desirability"])
+                if len(self.concerns):
+                    desirability =  self.desirability(event)
+                    self.AV["desirability"] = desirability
+                    print("Desirability of event ",event[0], " : ",self.AV["desirability"])
 
                 # Calculating expectedness
                 #self.C["AV"].setAppraisalVariable("expectedness",  expectedness(event, True))
@@ -525,7 +527,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
                 
             if concernVal != None:
                 if float(concernVal) < 0 or float(concernVal) > 1:
-                    concernVal = None
+                    concernVal = 0
                     print("Desirability can't be calculated. Concerns value out or range [0,1]!")
                     
         return float(concernVal)
@@ -585,7 +587,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         self.add_belief(event[0], agentspeak.runtime.Intention().scope)
         # We calculate the concern value
         concern_value = self.test_concern(concern.head, agentspeak.runtime.Intention(), concern)
-        print("Concern value: "+str(concern_value))
+        print("Concern value for addition: "+str(concern_value))
         # We remove the belief from the agent's belief base again
         self.remove_belief(event[0], agentspeak.runtime.Intention())
 
@@ -634,11 +636,12 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         # Translating the java code to python
 
         # We remove the belief from the agent's belief base, so we can calculate the concern value
-        self.remove_belief(event, agentspeak.runtime.Intention())
+        self.remove_belief(event[0], agentspeak.runtime.Intention())
         # We calculate the concern value
         concern_value = self.test_concern(concern.head, agentspeak.runtime.Intention(), concern)
+        print("Concern value for deletion: "+str(concern_value))
         # We add the belief to the agent's belief base again
-        self.add_belief(event, agentspeak.runtime.Intention())
+        self.add_belief(event[0], agentspeak.runtime.Intention())
         
         return concern_value 
         
@@ -687,6 +690,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
                 ped.event = self.event_queue.pop()
             
         if ped.event == None:
+            print(ped.event)
             self.appraisal(None, 0.0) # emEngine is not implemented yet
             self.currentEvent = None
             self.eventProcessedInCycle = False
@@ -828,6 +832,8 @@ class AffectiveAgent(agentspeak.runtime.Agent):
             bool: True if the instruction was executed
         """
         try: 
+            print(self.intention_selected)
+            print(self.beliefs)
             if self.intention_selected.instr.f(self, self.intention_selected):
                 self.intention_selected.instr = self.intention_selected.instr.success # We set the intention.instr to the instr.success
             else:
@@ -1000,8 +1006,8 @@ class Environment(agentspeak.runtime.Environment):
                     # This function will just sleep for 3 seconds and then set an event
                     #await asyncio.sleep(3)
                     await asyncio.sleep(3)
-                    agent.current_step = "Appr"
-                    agent.affectiveTransitionSystem() 
+                    agent.current_step = "SelEv"
+                    agent.applySemanticRuleDeliberate()
                     await asyncio.sleep(5)
                     event.set()
 
