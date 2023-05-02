@@ -467,18 +467,179 @@ class AffectiveAgent(agentspeak.runtime.Agent):
 
                 # Calculating expectedness
                 #self.C["AV"].setAppraisalVariable("expectedness",  expectedness(event, True))
+                #expectedness = self.expectedness(event, True)
 
                 # Calculating likelihood. It is always if the event is a belief to add (a fact)
                 #self.C["AV"].setAppraisalVariable("likelihood",  likelihood(event))
+                likelihood = self.likelihood(event)
 
                 # Calculating causal attribution
                 #self.C["AV"].setAppraisalVariable("causal_attribution", causalAttribution(event))
+                #causal_attribution = self.causalAttribution(event)
 
                 # Calculating controllability: "can the outcome be altered by actions under control of the agent whose
                 # perspective is taking"
                 #self.C["AV"].setAppraisalVariable("controllability", controllability(event,concern_value,desirability))
+                if len(self.concerns):
+                    controllability = self.controllability(event,concern_value,desirability)
+                    pass
                 result = True
         pass
+    
+    def controllability(self, event, concernsValue, desirability):
+        """
+        JAVA IMPLEMENTATION:
+        
+        public Double controllability(Event E, Double concernsValue, Double desirability){
+        Double result = null;
+        if (desirability!=null && concernsValue!=null){
+            result = desirability - concernsValue;
+            /*scale from [-1,1] to [0,1]*/
+            result = ((result + 1)/2);
+            /*if (result < 0 )
+                result = 0.0;
+            else result = Math.min(1.0,result);*/
+        }
+        return result;
+        }
+
+        """
+        
+        # Translating the java code to python
+        result = None
+        if desirability != None and concernsValue != None:
+            result = desirability - concernsValue
+            result = ((result + 1)/2)
+        return result
+    
+        
+        
+        
+    def causalAttribution(self, event):
+        """
+        
+        JAVA IMPLEMENTATION:
+        
+        ausalAttribution ca = null;
+        if (!E.getTrigger().getLiteral().getSources().contains(Literal.parseLiteral("self")))
+            ca = CausalAttribution.other;
+        else
+            ca = CausalAttribution.self;
+        return ca;
+        }
+
+        """
+        
+        # Translating the java code to python
+        
+        pass
+    
+    def likelihood(self, event):
+        """
+        
+        JAVA IMPLEMENTATION:
+        
+         public Double likelihood(Event E){
+            Double result = null;
+            if (E!=null && E.getTrigger().isAddition())
+                result = 1.0;
+            return result;
+        }
+        
+        /** Calculates the causal attribution of the event <i>E</i>. 
+        * Possible outputs are <i>self</i> or <i>other</i>*/
+
+        """
+        # Translating the java code to python
+        
+        result = None
+        if event != None and event[1].name == "addition":
+            result = 1.0
+        return result
+     
+        
+    def expectedness(self, event, remove):
+        """
+        JAVA IMPLEMENTATION:
+        
+        Double result1 = null;
+        Double result2 = null;
+        Double result = null;
+        if (E!=null){
+            int index = getC().getFulfilledExpectations().indexOf(E.getTrigger().getLiteral());
+            if (index!=-1){
+                result1 = getC().getFulfilledExpectations().get(index).getProbability();
+                if (remove) getC().getFulfilledExpectations().remove(index);
+            }
+            else {
+                index = getC().getNotFulfilledExpectations().indexOf(E.getTrigger().getLiteral());
+                if (index!=-1){
+                    result1 = -1 * getC().getNotFulfilledExpectations().get(index).getProbability();
+                    if (remove) getC().getNotFulfilledExpectations().remove(index);
+                }
+            }
+        }
+        //processing events that "didn't happen" and were expected in this affective cycle
+        //Averaging negative expectedness and removing this value from the previous result
+        /*double av=0;
+        int count=0;
+        for (int i = 0; i<getC().getNotFulfilledExpectations().size();i++)
+        {
+            av = av+getC().getNotFulfilledExpectations().get(i).getProbability();
+            count++;
+        }
+        if (remove) getC().getNotFulfilledExpectations().clear();
+        if (count > 0) result2 = (av/count);
+
+        if (result1!=null && result2!=null){result = Math.max(-1,result1 - result2);}*/
+        if (result1!=null){
+            if (result1 == 0){ // probability zero means that the event is not expected
+                result = -1.0;
+            }else{
+                result = result1; // simply returns the event probability if fulfilled or
+                                    //its negative value if not fulfilled
+            }
+        }
+        
+        return  result; // range [-1,1]
+        }
+
+        """
+        
+        # Translating the java code to python
+        result1 = None
+        result2 = None
+        result = None
+        
+        if event != None:
+            index = self.fulfilledExpectations.index(event[0])
+            if index != -1:
+                result1 = self.fulfilledExpectations[index][1]
+                if remove:
+                    self.fulfilledExpectations.pop(index)
+            else:
+                index = self.notFulfilledExpectations.index(event[0])
+                if index != -1:
+                    result1 = -1 * self.notFulfilledExpectations[index][1]
+                    if remove:
+                        self.notFulfilledExpectations.pop(index)
+         
+        #processing events that "didn't happen" and were expected in this affective cycle
+        #Averaging negative expectedness and removing this value from the previous result
+        av = 0
+        count = 0
+        for i in range(len(self.notFulfilledExpectations)):
+            av = av + self.notFulfilledExpectations[i][1]
+            count = count + 1
+        if remove:
+            self.notFulfilledExpectations = []
+        if count > 0:
+            result2 = (av/count) 
+         
+        if result1 != None and result2 != None:
+            result = max(-1,result1 - result2)
+         
+        return result # range [-1,1]
     
     def desirability(self, event):
         """
