@@ -424,7 +424,7 @@ class Agent:
                 found = self.remove_belief(term, calling_intention)
                 if not found:
                     return True
-
+        
         # Freeze with caller scope.
         frozen = agentspeak.freeze(term, calling_intention.scope, {})
 

@@ -118,9 +118,12 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         if goal_type == agentspeak.GoalType.belief: 
             # We recieve a belief and the affective cycle is activated.
             # We need to provide to the sunction the term and the Trigger type.
+            if not any([annotation.functor == "source" for annotation in term.annots]):
+                print("There no source annotation in the belief.")
             self.event_queue.append((term, trigger))
             self.appraisal((term, trigger),0)
-            if trigger == agentspeak.Trigger.addition: 
+            if trigger == agentspeak.Trigger.addition:
+                print("Belief addition: ", term) 
                 self.add_belief(term, calling_intention.scope)
             else: 
                 found = self.remove_belief(term, calling_intention) 
@@ -258,7 +261,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         """
         
         #self.term = self.ast_goal.atom.accept(agentspeak.runtime.BuildTermVisitor({}))
-        if len(self.C["E"]) > 0:
+        if "E" in self.C and len(self.C["E"]) > 0:
             # Select one event from the list of events and remove it from the list without using pop
             self.T["e"] = self.C["E"][0]
             self.C["E"] = self.C["E"][1:]
@@ -475,7 +478,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
 
                 # Calculating causal attribution
                 #self.C["AV"].setAppraisalVariable("causal_attribution", causalAttribution(event))
-                #causal_attribution = self.causalAttribution(event)
+                causal_attribution = self.causalAttribution(event)
 
                 # Calculating controllability: "can the outcome be altered by actions under control of the agent whose
                 # perspective is taking"
@@ -531,8 +534,12 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         """
         
         # Translating the java code to python
-        
-        pass
+        ca = None
+        if any([annotation.functor == "source" for annotation in event[0].annots]):
+            ca = "other"
+        else:
+            ca = "self"
+        return ca
     
     def likelihood(self, event):
         """
