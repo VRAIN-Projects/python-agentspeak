@@ -1,5 +1,6 @@
 from __future__ import print_function
 from typing import Union, Tuple, Iterator
+from enum import Enum
 
 import sys
 import collections
@@ -11,6 +12,9 @@ import threading
 import asyncio
 import concurrent.futures
 import random
+import numpy as np
+import math
+
 
 import agentspeak
 import agentspeak.runtime
@@ -874,13 +878,223 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         self.current_step = "UpAs"
         return True
         
+    def applyUpdateAffState(self):
+    
+        """
+        JAVA IMPLEMENTATION
+                logger.fine("-->> Doing update affective state <<--");
+            if (eventProcessedInCycle) // update only when an event was appraised
+                emEngine.UpdateAS();
+            if (emEngine.isAffectRelevantEvent(currentEvent))
+                getC().getMEM().add((Event) currentEvent.clone());
+            step = State.SelCs;;
+        }
 
-        if random.random() < 0.5:
-            self.current_step = "Empa"
-        else:
-            self.current_step = "EmSel"
-            
+        """
+        # Translating the java code to python
+        
+        if self.eventProcessedInCycle: # update only when an event was appraised
+            self.UpdateAS() # not implemented yet
+        if self.isAffectRelevantEvent(self.currentEvent): # not implemented yet
+            self.Mem.append(self.currentEvent)
+        self.current_step = "SelCs"
         return True
+    
+    def isAffectRelevantEvent(self, currentEvent):
+        
+        """
+        
+        JAVA IMPLEMENTATION
+        
+        public boolean isAffectRelevantEvent(Event event) {
+        boolean result = event!=null;
+        for ( PADExpression ex:affRevEventThreshold)
+            result = result && ex.evaluate(((PAD)getC().getAS()).getP(), ((PAD)getC().getAS()).getA(),((PAD)getC().getAS()).getD());
+        return result;
+        } 
+        """
+        
+        # Translating the java code to python
+        result = currentEvent != None
+        for ex in self.affRevEventThreshold: # not implemented yet
+            pass
+            #result = result and ex.evaluate(self.C["AS"]["P"], self.C["AS"]["A"], self.C["AS"]["D"])
+        return result
+    def UpdateAS(self):
+    
+        """
+        JAVA IMPLEMENTATION:
+        
+        public void UpdateAS() {
+    	if (getAS() instanceof PAD){
+    		PAD as = new PAD();
+    		PAD calculated_as = deriveASFromAppraisalVariables();
+    		if (calculated_as!=null){
+    			PAD current_as = (PAD) getAS(); 
+    			logger.fine("expectedness: " + getC().getAV().getValues().get(AppraisalVarLabels.expectedness.name()) + 
+    					", desirability: " + getC().getAV().getValues().get(AppraisalVarLabels.desirability.name()) + 
+    					", causal_attribution: " + getC().getAV().getValues().get(AppraisalVarLabels.causal_attribution.name()) + 
+    					", likelihood: " + getC().getAV().getValues().get(AppraisalVarLabels.likelihood.name()) + 
+    					", controllability: " + getC().getAV().getValues().get(AppraisalVarLabels.controllability.name()));
+
+    			Double tmpVal = null;
+    			Double vDiff_P = null;
+    			Double vDiff_A = null;
+    			Double vDiff_D = null;
+    			Double vectorToAdd_P = null;
+    			Double vectorToAdd_A = null;
+    			Double vectorToAdd_D = null;
+    			Double lengthToAdd  = null;
+    			PAD VEC = calculated_as;
+    			// Calculating the module of VEC
+    			Double VECmodule = Math.sqrt( Math.pow(VEC.getP(),2) + Math.pow(VEC.getA(),2) + Math.pow(VEC.getD(),2) );
+
+    			/* Applying the pull and push of ALMA */
+    			if (PAD.betweenVECandCenter( current_as, VEC) | // current_as between calculated_as and (0,0,0)
+    					!PAD.sameOctant(current_as, VEC)){ // or the are not in the same octant
+    				/* PULL PHASE: the current mood is between zero and the virtual emotion center (VEC) or 
+    				 * it is not in the same octant as the VEC. 
+    				 * The current mood is attracted towards the VEC. The 
+    				 * intensity of the VEC defines how strong the current mood is attracted. 
+    				 * This is can be seen as a vector sum, where the vector of the current affective state (vAS)
+    				 * is added the vector formed by 'as' and VEC reduced by DISPLACEMENT. This is 
+    				 * calculated as follows: 
+    				 * */ 
+    				//1. A vector (vDiff_P,vDiff_A,vDiff_D) that starts on 'as' and ends in VEC is determined
+    				vDiff_P = VEC.getP() - current_as.getP() ;
+    				vDiff_A = VEC.getA() - current_as.getA() ;
+    				vDiff_D = VEC.getD() - current_as.getD() ;
+
+
+    			}else{ //as in the same octant than VEC and as not between VEC and center
+    				/* PUSH PHASE: the current mood is beyond (or at) the virtual emotion center (VEC) and 
+    				 * the current mood is in the same octant as the VEC. 
+    				 * The current mood is pushed away, further into the current mood octant in which the 
+    				 * mood is located. The push phase realizes the concept that a person's mood gets 
+    				 * more intense the more experiences the person make that are supporting this mood. The   
+    				 * intensity of the VEC defines how strong the current mood is pushed away. 
+    				 * This is can be seen as a vector sum, where the vector of the current affective state (vAS)
+    				 * is added the vector formed by 'as' and VEC reduced by DISPLACEMENT. This is 
+    				 * calculated as follows: 
+    				 * */ 
+    				//1. A vector (vDiff_P,vDiff_A,vDiff_D) that starts on VEC and ends on 'as' is determined
+    				vDiff_P = current_as.getP() - VEC.getP() ;
+    				vDiff_A = current_as.getA() - VEC.getA() ;
+    				vDiff_D = current_as.getD() - VEC.getD() ;
+
+    			}
+
+    			//2. The module of the vector VEC () is multiplied by the DISPLACEMENT and this 
+    			//is the length that will have the vector to be added to 'as'
+    			lengthToAdd = VECmodule * DISPLACEMENT ;
+
+    			//3. Determining the vector to add
+    			vectorToAdd_P = vDiff_P * DISPLACEMENT ;
+    			vectorToAdd_A = vDiff_A * DISPLACEMENT ;
+    			vectorToAdd_D = vDiff_D * DISPLACEMENT ;
+
+    			//4. The vector vectorToAdd is added to 'as' and this is the new value of 
+    			// the current affective state
+    			tmpVal = current_as.getP() + vectorToAdd_P ;
+    			if (tmpVal > 1){tmpVal = 1.0;}else{if (tmpVal < -1){ tmpVal = -1.0 ;}}
+    			as.setP( Math.round(tmpVal * 10.0) / 10.0 );
+    			tmpVal = current_as.getA() + vectorToAdd_A ;                        tmpVal = as.getA() + tmpVal;
+    			if (tmpVal > 1){tmpVal = 1.0;}else{if (tmpVal < -1){ tmpVal = -1.0 ;}}
+    			as.setA(  Math.round(tmpVal * 10.0) / 10.0 );
+    			tmpVal = current_as.getD() + vectorToAdd_D ;                        tmpVal = as.getD() + tmpVal;
+    			if (tmpVal > 1){tmpVal = 1.0;}else{if (tmpVal < -1){ tmpVal = -1.0 ;}}
+    			as.setD(  Math.round(tmpVal * 10.0) / 10.0 );
+
+
+    			getC().setAS(as);
+    			List<String> AClabel = getAC().getACLabel(getC().getAS());
+    			getC().setAfE(AClabel);
+    		}
+    	}
+        }
+        
+        """
+        
+        # Translating the java code to python
+        
+        self.DISPLACEMENT = 0.5
+        
+        if isinstance(self.AS, PAD): 
+            pad = PAD()
+            calculated_as = self.deriveASFromAppraisalVariables() # not implemented yet
+            if calculated_as != None:
+                 # PAD current_as = (PAD) getAS(); 
+                current_as = self.AS
+                print("expectedness: " + str(self.AV["expectedness"]) +
+                        ", desirability: " + str(self.AV["desirability"]) +
+                        ", causal_attribution: " + str(self.AV["causal_attribution"]) +
+                        ", likelihood: " + str(self.AV["likelihood"]) +
+                        ", controllability: " + str(self.AV["controllability"]))
+                
+                tmpVal = None
+                vDiff_P = None
+                vDiff_A = None
+                vDiff_D = None
+                vectorToAdd_P = None
+                vectorToAdd_A = None
+                vectorToAdd_D = None
+                lengthToAdd  = None
+                VEC = calculated_as
+
+                # Calculating the module of VEC
+                VECmodule = math.sqrt( math.pow(VEC.getP(),2) + math.pow(VEC.getA(),2) + math.pow(VEC.getD(),2) )
+                 
+                # 1 Applying the pull and push of ALMA 
+                if PAD.betweenVECandCenter( current_as, VEC) or not PAD.sameOctant(current_as, VEC):
+                    vDiff_P = VEC.getP() - current_as.getP()
+                    vDiff_A = VEC.getA() - current_as.getA()
+                    vDiff_D = VEC.getD() - current_as.getD()
+                else:
+                    vDiff_P = current_as.getP() - VEC.getP()
+                    vDiff_A = current_as.getA() - VEC.getA()
+                    vDiff_D = current_as.getD() - VEC.getD()
+                    
+                # 2 The module of the vector VEC () is multiplied by the DISPLACEMENT and this
+                # is the length that will have the vector to be added to 'as'
+                lengthToAdd = VECmodule * self.DISPLACEMENT
+                
+                # 3 Determining the vector to add
+                vectorToAdd_P = vDiff_P * self.DISPLACEMENT
+                vectorToAdd_A = vDiff_A * self.DISPLACEMENT
+                vectorToAdd_D = vDiff_D * self.DISPLACEMENT
+                 
+                # 4 The vector vectorToAdd is added to 'as' and this is the new value of
+                # the current affective state
+                tmpVal = current_as.getP() + vectorToAdd_P
+                if tmpVal > 1:
+                    tmpVal = 1.0
+                else:
+                    if tmpVal < -1:
+                        tmpVal = -1.0
+                pad.setP( round(tmpVal * 10.0) / 10.0 )
+                tmpVal = current_as.getA() + vectorToAdd_A
+                if tmpVal > 1:
+                    tmpVal = 1.0
+                else:
+                    if tmpVal < -1:
+                        tmpVal = -1.0
+                pad.setA(  round(tmpVal * 10.0) / 10.0 )
+                tmpVal = current_as.getD() + vectorToAdd_D
+                if tmpVal > 1:
+                    tmpVal = 1.0
+                else:
+                    if tmpVal < -1:
+                        tmpVal = -1.0
+                pad.setD(  round(tmpVal * 10.0) / 10.0 )
+                 
+                self.AS = pad
+                AClabel = self.AC.getACLabel(self.AS) # not implemented yet
+                self.AfE = AClabel
+        pass
+                 
+                        
+                
+    
     
     def cleanAffectivelyRelevantEvents(self) -> bool:
         """
@@ -1343,5 +1557,303 @@ class PairEventDesirability:
         def __init__(self, event):
             self.event = event
             self.AV = {"desirability": None} 
-                                
+
+class AffectiveState:
+
+    """
+
+    JAVA IMPLEMENTATION:
+
+    public abstract class AffectiveState {
+        
+        protected Logger logger = Logger.getLogger(AffectiveState.class.getName());
+        
+        private List<Double> components = null;
+
+        private List<String> affectiveLabels ;
+        
+        public abstract void setAffectiveLabels();
+        public abstract AffectiveState clone();
+        
+        /**
+        * Initializes the affective state with zero for all of 
+        * its components. The affective label of each of the components is 
+        * also initialized
+        */
+        public void init(){
+            affectiveLabels = new ArrayList<String>();
+            components = new ArrayList<Double>();
+            setAffectiveLabels();
+            if (affectiveLabels!=null)
+                for (int i=0; i<affectiveLabels.size(); i++)
+                    components.add(0.0);
+            components = new ArrayList<Double>( Collections.nCopies( affectiveLabels.size(),0.0));
+        };
+        
+        public AffectiveState() {
+            init();
+        }
+        
+        public List<String> getAffectiveLabels(){
+            return affectiveLabels;
+        }
+
+        public List<Double> getComponents() {
+            return components;
+        }
+
+        public void setComponents(List<Double> comp) throws Exception {
+            if (comp!=null){
+                if ( propperSize(comp.size()))
+                    this.components = comp;
+                else
+                    throw new Exception("Incorrect input data size");
+            }
+                
+        }
+
+        public int getComponentsNumber() {
+            int nr = 0;
+            if (components != null)
+                nr = components.size();
+            /*else
+                if (labels != null)
+                    nr = labels.size();*/
+            return nr;
+        }
+
+        
+        /**
+        * @param size
+        * @return True if the value of <i>size</i> is equal to the 
+        * number of components
+        */
+        boolean propperSize(int size){
+            boolean result = false;
+            if (components != null)
+                result = (size == components.size());
+            else
+                /*if (labels!=null)
+                    result = (size == labels.size());
+                else*/
+                    result = true;
+            return result;
+        }
+        
+        }
+    """                          
+    # Translating the java code to python
+    
+    components = None
+    affectiveLabels = None
+     
+    def __init__(self):
+        self.init()
+        
+    def init(self):
+        self.affectiveLabels = []
+        self.components = []
+        self.setAffectiveLabels()
+        if self.affectiveLabels:
+            for i in range(len(self.affectiveLabels)):
+                self.components.append(0.0)
+        self.components = [0.0 for i in range(len(self.affectiveLabels))]
+    
+    def setAffectiveLabels(self):
+        
+        """NOT IMPLEMENTED YET, I THINK"""
+        pass
+      
+    def clone(self):
+        pass
+    
+    def getAffectiveLabels(self):
+        return self.affectiveLabels
+    
+    def getComponents(self):
+        return self.components
+    
+    def setComponents(self, comp):
+        if comp:
+            if self.propperSize(len(comp)):
+                self.components = comp
+            else:
+                raise Exception("Incorrect input data size")
             
+    def getComponentsNumber(self):
+        nr = 0
+        if self.components:
+            nr = len(self.components)
+        return nr
+    
+    def propperSize(self, size):
+        result = False
+        if self.components:
+            result = (size == len(self.components))
+        else:
+            result = True
+        return result
+     
+class PAD(AffectiveState):
+    """
+     JAVA IMPLEMENTATION:
+     
+     public class PAD extends AffectiveState{
+    public static enum PADlabels  { pleassure , arousal, dominance}
+    
+    public PAD(){
+        super();
+    }
+    
+    public PAD(Double P,Double A,Double D){
+        super();
+        setP(P);setA(A);setD(D);
+    }
+    
+    @Override
+    public void setAffectiveLabels() {
+        getAffectiveLabels().add(PADlabels.pleassure.toString());
+        getAffectiveLabels().add(PADlabels.arousal.toString());
+        getAffectiveLabels().add(PADlabels.dominance.toString());
+    }
+
+    @Override
+    public AffectiveState clone() {
+        PAD pad = new PAD();
+        pad.init();
+        for (int i=0; i<getComponentsNumber(); i++)
+            pad.getComponents().add(getComponents().get(i));
+        return pad;
+    }
+    
+    public static boolean sameOctant(PAD as1, PAD as2){
+        boolean result = false;
+        if (as1!=null && as2!=null)
+            result = (  Math.signum( as1.getP()) == Math.signum( as2.getP()) && 
+                        Math.signum( as1.getA()) == Math.signum( as2.getA()) &&
+                        Math.signum( as1.getD()) == Math.signum( as2.getD()));
+        return result;
+        
+    }
+
+    /**
+     * @param as Current sffective state
+     * @param vec Virtual Emotion Center (calculated affective state)
+     * @return <code>True</code> if at least one <i>as</i>'s dimension is between the 
+     * corresponding <i>vec</i>'s dimension (excluding it) and zero. 
+     * Otherwise it returns <code>False</code>
+     */
+    public static boolean betweenVECandCenter(PAD as, PAD vec){
+        boolean result = false;
+        if (as!=null && vec!=null)
+        	result =(
+        				vec.getP()<=0 & (	vec.getP() < as.getP() & as.getP() <= 0 )|
+        				vec.getP()> 0 & ( 0 <= as.getP() & as.getP() < vec.getP() )
+        					)|
+        			(
+            				vec.getA()<=0 & (	vec.getA() < as.getA() & as.getA() <= 0 )|
+            				vec.getA()> 0 & ( 0 <= as.getA() & as.getA() < vec.getA() )
+            				)|
+        			(
+            				vec.getD()<=0 & (	vec.getD() < as.getD() & as.getD() <= 0 )|
+            				vec.getD()> 0 & ( 0 <= as.getD() & as.getD() < vec.getD() )
+            				)
+        			;
+
+           /* ( (vec.getP()<0&as.getP()>vec.getP())|(vec.getP()>0&as.getP()<vec.getP()) )|
+                        ( (vec.getA()<0&as.getA()>vec.getA())|(vec.getA()>0&as.getA()<vec.getA()) )|
+                        ( (vec.getD()<0&as.getD()>vec.getD())|(vec.getD()>0&as.getD()<vec.getD()) ) ; */
+        return result;
+        
+    }
+
+    public Double getP(){
+        return getComponents().get(PADlabels.pleassure.ordinal());
+    }
+    
+    public void setP(Double P){
+        getComponents().set(PADlabels.pleassure.ordinal(), P);
+    }
+
+    public Double getA(){
+        return getComponents().get(PADlabels.arousal.ordinal());
+    }
+    
+    public void setA(Double P){
+        getComponents().set(PADlabels.arousal.ordinal(), P);
+    }
+    
+    public Double getD(){
+        return getComponents().get(PADlabels.dominance.ordinal());
+    }
+    
+    public void setD(Double P){
+        getComponents().set(PADlabels.dominance.ordinal(), P);
+    }
+    }
+
+    """
+     
+     # Translating the java code to python
+     
+    class PADlabels(Enum):
+        pleassure = 0
+        arousal = 1
+        dominance = 2
+        
+    def __init__(self, P=None, A=None, D=None):
+        super().__init__()
+        if P is not None and A is not None and D is not None:
+            self.setP(P)
+            self.setA(A)
+            self.setD(D)
+            
+    def setAffectiveLabels(self):
+        self.affectiveLabels.append(self.PADlabels.pleassure.name)
+        self.affectiveLabels.append(self.PADlabels.arousal.name)
+        self.affectiveLabels.append(self.PADlabels.dominance.name)
+        
+    def clone(self):
+        pad = PAD()
+        pad.init()
+        for i in range(self.getComponentsNumber()):
+            pad.getComponents().append(self.getComponents()[i])
+        return pad
+     
+    @staticmethod
+    def sameOctant(as1, as2):
+        result = False
+        if as1 is not None and as2 is not None:
+            result = (  np.sign(as1.getP()) == np.sign(as2.getP()) and 
+                        np.sign(as1.getA()) == np.sign(as2.getA()) and
+                        np.sign(as1.getD()) == np.sign(as2.getD()))
+        return result
+    
+    @staticmethod
+    def betweenVECandCenter(as1, as2):
+        result = False
+        if as1 is not None and as2 is not None:
+            result = ((as1.getP() < 0 and as2.getP() > as1.getP()) or (as1.getP() > 0 and as2.getP() < as1.getP())) or \
+                     ((as1.getA() < 0 and as2.getA() > as1.getA()) or (as1.getA() > 0 and as2.getA() < as1.getA())) or \
+                     ((as1.getD() < 0 and as2.getD() > as1.getD()) or (as1.getD() > 0 and as2.getD() < as1.getD()))
+        			
+        return result
+     
+    def getP(self):
+        return self.components[self.PADlabels.pleassure.value]
+     
+    def setP(self, P):
+        self.components[self.PADlabels.pleassure.value] = P
+         
+    def getA(self):
+        return self.components[self.PADlabels.arousal.value]
+    
+    def setA(self, A):
+        self.components[self.PADlabels.arousal.value] = A
+        
+    def getD(self):
+        return self.components[self.PADlabels.dominance.value]
+     
+    def setD(self, D):
+        self.components[self.PADlabels.dominance.value] = D
+        
