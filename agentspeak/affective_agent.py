@@ -80,6 +80,31 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         
         self.event_queue = []
         self.AV = {"desirability": None} 
+         
+        self.initAffectiveThreshold()
+         
+        self.fulfilledExpectations = []
+        self.notFulfilledExpectations = []
+        
+    def initAffectiveThreshold(self):
+    
+        """
+        
+        private static double DISPLACEMENT = 0.5;
+    
+        private List<PADExpression> affRevEventThreshold = new ArrayList<PADExpression>();
+
+        public void initAffectiveThreshold(){
+            affRevEventThreshold.add(new PADExpression(0.8, CondOperator.or, 0.8, CondOperator.and, 0.0));
+        }
+        """
+        
+        # Translating the java code to python
+        self.DISPLACEMENT = 0.5
+        self.affRevEventThreshold = []
+        self.affRevEventThreshold.append([0.8, "or", 0.8, "and", 0.0])
+        
+
         
     def add_concern(self, concern):
         """ 
@@ -877,7 +902,69 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         # The next step is Update Aff State
         self.current_step = "UpAs"
         return True
+    
+    def applySelectCopingStrategy(self):
+        """
         
+        JAVA IMPLEMENTATION:
+        
+        private void applySelectCopingStrategy() {
+        logger.fine("-->> Doing select coping strategy <<--");
+        getC().getCS().clear();     
+        emEngine.selectCs();
+        step = State.Cope;
+        }  
+
+        """
+        
+        # Translating the java code to python
+        self.C["CS"] = []
+        self.selectCs() # is not implemented yet
+        self.current_step = "Cope"
+        return True
+    
+    def selectCs(self):
+        """
+        
+        JAVA IMPLEMENTATION:
+        
+        public void selectCs() {
+        List<String> AClabel = getC().getAfE();
+        boolean logCons = false;
+        boolean asContainsCs = false;
+        if (AClabel.size()!=0 && ag.getPersonality().getCopingStrategies() != null){
+            for (CopingStrategy cs : ag.getPersonality().getCopingStrategies() )
+            {
+                if (AClabel.contains(cs.getAffectCategory().toString())) {
+                    Unifier un = new Unifier();
+                    logCons = cs.getContext().logicalConsequence(ag, un).hasNext();
+                    if (logCons) getC().getCS().add(cs);
+                    asContainsCs = true;
+                }
+            }
+            if(asContainsCs) getC().getAfE().clear(); 
+        }
+        }
+
+        """
+        #  self.Ag = {"P": {}, "cc": []} # Personality and concerns definition
+        # Translating the java code to python not finished yet
+        AClabel = self.C["AfE"]
+        logCons = False
+        asContainsCs = False
+        if len(AClabel) != 0 and self.Ag["P"].getCopingStrategies() != None:
+            for cs in self.ag.getPersonality().getCopingStrategies():
+                if cs.getAffectCategory().name in AClabel:
+                    un = Unifier()
+                    logCons = cs.getContext().logicalConsequence(self.ag, un).hasNext()
+                    if logCons:
+                        self.C["CS"].append(cs)
+                    asContainsCs = True
+            if asContainsCs:
+                self.C["AfE"] = []
+                
+    
+    
     def applyUpdateAffState(self):
     
         """
@@ -914,11 +1001,10 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         } 
         """
         
-        # Translating the java code to python
+        # Translating the java code to python, i don't the meaning of the evaluate function
         result = currentEvent != None
-        for ex in self.affRevEventThreshold: # not implemented yet
-            pass
-            #result = result and ex.evaluate(self.C["AS"]["P"], self.C["AS"]["A"], self.C["AS"]["D"])
+        for ex in self.affRevEventThreshold: 
+            result = result and ex.evaluate(self.C["AS"]["P"], self.C["AS"]["A"], self.C["AS"]["D"])
         return result
     def UpdateAS(self):
     
@@ -1021,7 +1107,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         
         if isinstance(self.AS, PAD): 
             pad = PAD()
-            calculated_as = self.deriveASFromAppraisalVariables() # not implemented yet
+            calculated_as = self.deriveASFromAppraisalVariables() 
             if calculated_as != None:
                  # PAD current_as = (PAD) getAS(); 
                 current_as = self.AS
@@ -1092,8 +1178,208 @@ class AffectiveAgent(agentspeak.runtime.Agent):
                 self.AfE = AClabel
         pass
                  
+    def getACLabel(self):
+        """
+        
+        JAVA IMPLEMENTATION:
+        
+        public List<String> getACLabel(AffectiveState as){
+        List<String> result = new ArrayList<String>();
+        boolean matches = true;
+        Range r;
+        
+        for (String acl : affectiveCategories.keySet()){
+                matches = true;
+                if (affectiveCategories.get(acl)!=null){
+                    if(affectiveCategories.get(acl).size() == as.getComponentsNumber()){
+                        /*String txt="";
+                        for (int acIndex=0; acIndex<affectiveCategories.get(acl).size(); acIndex++){
+                            txt = txt+
+                            		"ac index: "+acIndex+
+                            		", min: "+ (affectiveCategories.get(acl).get(acIndex).getMin())+
+                            		", max: "+affectiveCategories.get(acl).get(acIndex).getMax();
+                        }
+                        logger.fine(txt);*/
+                        
+                        for (int i = 0; i < as.getComponentsNumber(); i++){
+                            r = affectiveCategories.get(acl).get(i);
+                            matches = matches && as.getComponents().get(i) >= r.getMin() && 
+                                                 as.getComponents().get(i) <= r.getMax();
+                            /*logger.fine("Component index: "+i+
+                            		", component: "+as.getComponents().get(i)+
+                            		", affect category "+acl+"("+r.getMin()+","+r.getMax()+") matches "+matches);*/
+                        }
+                    }else{
+                        try {
+                            throw new Exception("The number of components for the affective category " + acl + " must be the same as the number of the components for the affective state");
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    
+                }
+                if (matches){
+                    result.add(acl);
+                }
+            }
+        return result;
+        }
+
+        """
+        
+        # Translating the java code to python
+        
+        result = []
+        matches = True
+        r = None
+         
+        for acl in self.affectiveCategories.keys():
+            matches = True
+            if self.affectiveCategories[acl] != None:
+                if len(self.affectiveCategories[acl]) == len(self.AS):
+                    for i in range(len(self.AS)):
+                        r = self.affectiveCategories[acl][i]
+                        matches = matches and self.AS[i] >= r.getMin() and self.AS[i] <= r.getMax()
+                else:
+                    try:
+                        raise Exception("The number of components for the affective category " + acl + " must be the same as the number of the components for the affective state")
+                    except Exception as e:
+                        print(e)
+            if matches:
+                result.append(acl)
+        return result
                         
                 
+    def deriveASFromAppraisalVariables(self):
+        """
+        JAVA IMPLEMENTATION:
+        
+            public PAD deriveASFromAppraisalVariables(){
+        List<Emotions> em = new ArrayList<Emotions>();
+        if (getC().getAV().getValues().containsKey(AppraisalVarLabels.expectedness.name()) &&
+                getC().getAV().getValues().get(AppraisalVarLabels.expectedness.name()) != null &&
+                getC().getAV().getValues().get(AppraisalVarLabels.expectedness.name()) < 0 )
+            em.add(Emotions.surprise);
+        if (getC().getAV().getValues().containsKey(AppraisalVarLabels.desirability.name()) &&
+                getC().getAV().getValues().get(AppraisalVarLabels.desirability.name()) != null &&
+                getC().getAV().getValues().containsKey(AppraisalVarLabels.likelihood.name()) &&
+                getC().getAV().getValues().get(AppraisalVarLabels.likelihood.name()) != null ){
+            if (getC().getAV().getValues().get(AppraisalVarLabels.desirability.name()) > 0.5 ){
+                if (getC().getAV().getValues().get(AppraisalVarLabels.likelihood.name()) < 1)
+                    em.add(Emotions.hope);
+                else if (getC().getAV().getValues().get(AppraisalVarLabels.likelihood.name()) == 1)
+                    em.add(Emotions.joy);
+            }else{ //desirability <= 0.5
+                if (getC().getAV().getValues().get(AppraisalVarLabels.likelihood.name()) < 1)
+                    em.add(Emotions.fear);
+                else if (getC().getAV().getValues().get(AppraisalVarLabels.likelihood.name()) == 1)
+                    em.add(Emotions.sadness);
+                if (    getC().getAV().getValues().containsKey(AppraisalVarLabels.causal_attribution.name()) &&
+                        getC().getAV().getValues().containsKey(AppraisalVarLabels.controllability.name()) &&
+                        getC().getAV().getValues().get(AppraisalVarLabels.causal_attribution.name())!=null &&
+                        getC().getAV().getValues().get(AppraisalVarLabels.controllability.name())!=null &&
+                        getC().getAV().getValues().get(AppraisalVarLabels.causal_attribution.name()) == CausalAttribution.other.ordinal() &&
+                        getC().getAV().getValues().get(AppraisalVarLabels.controllability.name()) >0.7)
+                    em.add(Emotions.anger);
+            }
+        }
+        PAD result = new PAD();
+        result.setP(0.0); result.setA(0.0); result.setD(0.0);
+        for (Emotions e : em)
+            switch (e){
+                case anger :    result.setP(result.getP()-0.51); // Angry(Russell & Mehrabian 1977, p. 286ff)
+                                result.setA(result.getA()+0.59);
+                                result.setD(result.getD()+0.25);
+                                break;
+                case fear :     result.setP(result.getP()-0.64); //Fearful (Russell & Mehrabian 1977, p. 286ff)
+                                result.setA(result.getA()+0.60);
+                                result.setD(result.getD()-0.43);
+                                break;
+                case hope :     result.setP(result.getP()+0.2); //ALMA
+                                result.setA(result.getA()+0.2);
+                                result.setD(result.getD()-0.1);
+                                break;
+                case joy :      result.setP(result.getP()+0.76); //joyfull (Russell & Mehrabian 1977, p. 286ff)
+                                result.setA(result.getA()+0.48);
+                                result.setD(result.getD()+0.35);
+                                break;
+                case sadness :  result.setP(result.getP()-0.63); //sad (Russell & Mehrabian 1977, p. 286ff)
+                                result.setA(result.getA()-0.27);
+                                result.setD(result.getD()-0.33);
+                                break;
+                case surprise : result.setP(result.getP()+0.4); //Surprised (Russell & Mehrabian 1977, p. 286ff)
+                                result.setA(result.getA()+0.67);
+                                result.setD(result.getD()-0.13);
+                                break;
+            }
+        // Averaging
+        if (em.size()>0){
+            result.setP(result.getP()/em.size()); 
+            result.setA(result.getA()/em.size());
+            result.setD(result.getD()/em.size());
+        }else
+            result=null;
+        return result;
+        
+        }
+
+        """
+        
+        # Translating the java code to python
+        em = []
+        if self.AV["expectedness"] != None and self.AV["expectedness"] < 0:
+            em.append("surprise")
+        if self.AV["desirability"] != None and self.AV["likelihood"] != None:
+            if self.AV["desirability"] > 0.5:
+                if self.AV["likelihood"] < 1:
+                    em.append("hope")
+                elif self.AV["likelihood"] == 1:
+                    em.append("joy")
+            else:
+                if self.AV["likelihood"] < 1:
+                    em.append("fear")
+                elif self.AV["likelihood"] == 1:
+                    em.append("sadness")
+                if self.AV["causal_attribution"] != None and self.AV["controllability"] != None and self.AV["causal_attribution"] == "other" and self.AV["controllability"] > 0.7:
+                    em.append("anger")
+        result = PAD()
+        result.setP(0.0)
+        result.setA(0.0)
+        result.setD(0.0)
+        for e in em:
+            if e == "anger":
+                result.setP(result.getP()-0.51)
+                result.setA(result.getA()+0.59)
+                result.setD(result.getD()+0.25)
+            elif e == "fear":
+                result.setP(result.getP()-0.64)
+                result.setA(result.getA()+0.60)
+                result.setD(result.getD()-0.43)
+            elif e == "hope":
+                result.setP(result.getP()+0.2)
+                result.setA(result.getA()+0.2)
+                result.setD(result.getD()-0.1)
+            elif e == "joy":
+                result.setP(result.getP()+0.76)
+                result.setA(result.getA()+0.48)
+                result.setD(result.getD()+0.35)
+            elif e == "sadness":
+                result.setP(result.getP()-0.63)
+                result.setA(result.getA()-0.27)
+                result.setD(result.getD()-0.33)
+            elif e == "surprise":
+                result.setP(result.getP()+0.4)
+                result.setA(result.getA()+0.67)
+                result.setD(result.getD()-0.13)
+         
+        # Averaging
+        if len(em) > 0:
+            result.setP(result.getP()/len(em))
+            result.setA(result.getA()/len(em))
+            result.setD(result.getD()/len(em))
+        else:
+            result = None
+        return result
     
     
     def cleanAffectivelyRelevantEvents(self) -> bool:
