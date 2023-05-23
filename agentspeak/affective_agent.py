@@ -29,6 +29,184 @@ from agentspeak import UnaryOp, BinaryOp, AslError, asl_str
 LOGGER = agentspeak.get_logger(__name__)
 C = {}
 
+class PADExpression():
+    """
+    JAVA IMPLEMENTATION:
+    
+    public class PADExpression {
+        Double PThreshold, AThreshold, DThreshold;
+        CondOperator operator1, operator2;
+        
+        public PADExpression(Double pThres, CondOperator op1, Double aThres, CondOperator op2, Double dThres){
+            PThreshold = pThres;
+            operator1 = op1;
+            AThreshold = aThres;
+            operator2 = op2;
+            DThreshold = dThres;
+        }
+        
+        public boolean evaluate(Double p, Double a, Double d){
+            boolean result = true;
+            if (operator1 == CondOperator.and)  result = ((p<=PThreshold) && (p<=AThreshold));
+            else    result = ((p<=PThreshold) || (p<=AThreshold));
+            if (operator2 == CondOperator.and)  result = (result && (p<=AThreshold));
+            else    result = (result || (p<=AThreshold));
+                 
+            return result;
+        }
+
+    } 
+
+    """
+    
+    # Translating the java code to python
+     
+    def __init__(self, pThres, op1, aThres, op2, dThres):
+        self.PThreshold = pThres
+        self.operator1 = op1
+        self.AThreshold = aThres
+        self.operator2 = op2
+        self.DThreshold = dThres
+        
+    def evaluate(self, p, a, d): 
+        # Why we need a and d if we are not using them?
+        result = True
+        if self.operator1 == "and":
+            result = ((p <= self.PThreshold) and (p <= self.AThreshold))
+        else:
+            result = ((p <= self.PThreshold) or (p <= self.AThreshold))
+        if self.operator2 == "and":
+            result = (result and (p <= self.AThreshold))
+        else:
+            result = (result or (p <= self.AThreshold))
+        return result
+
+class Personality():
+    """
+
+    JAVA IMPLEMENTATION:
+    
+    public abstract class Personality {
+    protected Logger logger = Logger.getLogger(Personality.class.getName());
+
+    /**
+     * Names of the elements of the personality traits. They are the same 
+     * for every instance of the same class
+     */
+    protected List<String> traitsLabels ;
+    private List<Double> traits = null;
+    /** Rationality level. By default completely emotional */
+    private Double rationalityLevel  = 0.0; 
+    private List<CopingStrategy> copingStrategies = null; 
+    public abstract void setTraitsLabels();
+    public abstract Personality clone();
+    
+    /**
+     * Initializes the personality traits and traits labels
+     */
+    public void init(){
+        traitsLabels = new  ArrayList<String>();
+        traits = new ArrayList<Double>();
+        setTraitsLabels();
+        if (traitsLabels!=null)
+        traits = new ArrayList<Double>( Collections.nCopies( traitsLabels.size(),0.0));
+    };
+    
+
+    
+    public Double getRationalityLevel() {
+        return rationalityLevel;
+    }
+
+    public void setRationalityLevel(Double rationalityLevel) {
+        this.rationalityLevel = rationalityLevel;
+    }
+
+    public List<CopingStrategy> getCopingStrategies() {
+        return copingStrategies;
+    }
+
+    public void setCopingStrategies(List<CopingStrategy> copingStrategies) {
+        this.copingStrategies = copingStrategies;
+    }
+    
+    public Personality() {
+        super();
+        init();
+    }
+    
+    public void setTraitsLabels(List<String> traitsLab) {
+        traitsLabels = traitsLab;
+    }
+    
+    public List<String> getTraitsLabels() {
+        return traitsLabels;
+    }
+    
+    public List<Double> getTraits() {
+        return traits;
+    }
+
+    public void setTraits(List<Double> traits) {
+        this.traits = traits;
+    }
+
+    public void setTraits(ListTerm traits) {
+        this.traits.clear();
+        for (int i=0; i<traits.size();i++)
+            this.traits.add(  ((NumberTermImpl)traits.get(i)).solve() );
+    }
+
+    }
+
+    """
+    
+    # Translating the java code to python
+    
+    def __init__(self):
+        self.traitsLabels = []
+        self.traits = []
+        self.rationalityLevel = 0.0
+        self.copingStrategies = []
+        self.init()
+        
+    def init(self):
+        self.traitsLabels = []
+        self.traits = []
+        self.setTraitsLabels()
+        if self.traitsLabels != None:
+            self.traits = [0.0] * len(self.traitsLabels)
+    
+    def setTraitsLabels(self):
+        pass
+     
+    def clone(self):
+        pass
+     
+    def getRationalityLevel(self):
+        return self.rationalityLevel
+     
+    def setRationalityLevel(self, rationalityLevel):
+        self.rationalityLevel = rationalityLevel
+    
+    def getCopingStrategies(self):
+        return self.copingStrategies
+    
+    def setCopingStrategies(self, copingStrategies):
+        self.copingStrategies = copingStrategies
+         
+    def setTraitsLabels(self, traitsLab):
+        self.traitsLabels = traitsLab   
+         
+    def getTraitsLabels(self):
+        return self.traitsLabels
+    
+    def getTraits(self):
+        return self.traits
+    
+    def set_traits(self, traits):
+        self.traits = traits
+        
 class AffectiveAgent(agentspeak.runtime.Agent):
     """
     This class is a subclass of the Agent class. 
@@ -102,7 +280,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         # Translating the java code to python
         self.DISPLACEMENT = 0.5
         self.affRevEventThreshold = []
-        self.affRevEventThreshold.append([0.8, "or", 0.8, "and", 0.0])
+        self.affRevEventThreshold.append(PADExpression(0.8, "or", 0.8, "and", 0.0))
         
 
         
