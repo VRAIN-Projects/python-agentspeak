@@ -450,21 +450,6 @@ def parse_tkconcern(tok, tokens, log):
                 raise log.error("expected ')' or another argument for the literal, got '%s'",
                                 tok.lexeme, loc=tok.loc, extra_locs=[literal.loc])
 
-    if tok.lexeme == "[":
-        while True:
-            tok = next(tokens)
-            tok, term = parse_term(tok, tokens, log)
-            literal.annotations.append(term)
-
-            if tok.lexeme == "]":
-                tok = next(tokens)
-                break
-            elif tok.lexeme == ",":
-                continue
-            else:
-                raise log.error("expected ']' or another annotation, got '%s'", tok.lexeme,
-                                loc=tok.loc, extra_locs=[literal.loc])
-
     return tok, literal
 
 def parse_literal(tok, tokens, log):
