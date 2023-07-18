@@ -618,65 +618,9 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         return True
     
     def appraisal(self, event, concern_value):
-        """
-        This function recieves an event and a concern value and calculates the desirability, likelihood,
-        controllability and causalAtribution of the event. Then, it returns the result of the appraisal of the event.
-        
-        Args:
-            event (Event): The event to be appraised
-            concern_value (float): The concern value of the event
-        
-        Returns:
-            bool: True if the event is appraised, False otherwise
-        
-        JAVA IMPLEMENTATION:
-        
-        public boolean appraisal(Event E, Double concernsValue) {
-        selectingCs = true;
-        boolean result = false;
-        if (E != null){
-            logger.fine("E.getTrigger().getLiteral() "+E.getTrigger().getLiteral()
-                +" is Addition "+E.getTrigger().isAddition());
-            if (E.getTrigger().getOperator() == TEOperator.del || //evaluating only adding or removing events
-                    E.getTrigger().isAddition()) 
-            {
-                /* Calculating desirability */
-                Double desirability =  desirability( E);
-                logger.fine("Desirability of event "+E.getTrigger().getFunctor()+" : "+desirability);
-                getC().getAV().setAppraisalVariable(AppraisalVarLabels.desirability.name(),desirability);
-
-                /* Calculating expectedness */
-                getC().getAV().setAppraisalVariable(AppraisalVarLabels.expectedness.name(),  expectedness(E, true));
-
-                /* Calculating likelihood. It is always if the event is a belief to add (a fact) */
-                getC().getAV().setAppraisalVariable(AppraisalVarLabels.likelihood.name(),  likelihood(E));
-
-                /* Calculating causal attribution */
-                getC().getAV().setAppraisalVariable(AppraisalVarLabels.causal_attribution.name(), (double)causalAttribution(E).ordinal());
-
-                /* Calculating controllability: "can the outcome be altered by actions under control of the agent whose
-                 * perspective is taking" */
-                getC().getAV().setAppraisalVariable(AppraisalVarLabels.controllability.name(), controllability(E,concernsValue,desirability));
-             result = true  ;
-            }
-        }
-        else{
-            getC().getAV().setAppraisalVariable(AppraisalVarLabels.desirability.name(),null);
-            getC().getAV().setAppraisalVariable(AppraisalVarLabels.expectedness.name(),  null);
-            getC().getAV().setAppraisalVariable(AppraisalVarLabels.likelihood.name(),  null);
-            getC().getAV().setAppraisalVariable(AppraisalVarLabels.causal_attribution.name(), null);
-            getC().getAV().setAppraisalVariable(AppraisalVarLabels.controllability.name(), null);
-        }
-        return result;
-        }
-
-        """
-        # Translating the java code to python
         selectingCs = True
         result = False
         if event != None:
-            # The event is an addition or a deletion of a belief
-            
                 # Calculating desirability
                 if len(self.concerns):
                     desirability =  self.desirability(event)
@@ -703,25 +647,6 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         return result
     
     def controllability(self, event, concernsValue, desirability):
-        """
-        JAVA IMPLEMENTATION:
-        
-        public Double controllability(Event E, Double concernsValue, Double desirability){
-        Double result = null;
-        if (desirability!=null && concernsValue!=null){
-            result = desirability - concernsValue;
-            /*scale from [-1,1] to [0,1]*/
-            result = ((result + 1)/2);
-            /*if (result < 0 )
-                result = 0.0;
-            else result = Math.min(1.0,result);*/
-        }
-        return result;
-        }
-
-        """
-        
-        # Translating the java code to python
         result = None
         if desirability != None and concernsValue != None:
             result = desirability - concernsValue
@@ -732,21 +657,6 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         
         
     def causalAttribution(self, event):
-        """
-        
-        JAVA IMPLEMENTATION:
-        
-        ausalAttribution ca = null;
-        if (!E.getTrigger().getLiteral().getSources().contains(Literal.parseLiteral("self")))
-            ca = CausalAttribution.other;
-        else
-            ca = CausalAttribution.self;
-        return ca;
-        }
-
-        """
-        
-        # Translating the java code to python
         ca = None
         if any([annotation.functor == "source" for annotation in event[0].annots]):
             ca = "other"
@@ -754,24 +664,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
             ca = "self"
         return ca
     
-    def likelihood(self, event):
-        """
-        
-        JAVA IMPLEMENTATION:
-        
-         public Double likelihood(Event E){
-            Double result = null;
-            if (E!=null && E.getTrigger().isAddition())
-                result = 1.0;
-            return result;
-        }
-        
-        /** Calculates the causal attribution of the event <i>E</i>. 
-        * Possible outputs are <i>self</i> or <i>other</i>*/
-
-        """
-        # Translating the java code to python
-        
+    def likelihood(self, event):        
         result = None
         if event != None and event[1].name == "addition":
             result = 1.0
@@ -779,54 +672,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
      
         
     def expectedness(self, event, remove):
-        """
-        JAVA IMPLEMENTATION:
-        
-        Double result1 = null;
-        Double result2 = null;
-        Double result = null;
-        if (E!=null){
-            int index = getC().getFulfilledExpectations().indexOf(E.getTrigger().getLiteral());
-            if (index!=-1){
-                result1 = getC().getFulfilledExpectations().get(index).getProbability();
-                if (remove) getC().getFulfilledExpectations().remove(index);
-            }
-            else {
-                index = getC().getNotFulfilledExpectations().indexOf(E.getTrigger().getLiteral());
-                if (index!=-1){
-                    result1 = -1 * getC().getNotFulfilledExpectations().get(index).getProbability();
-                    if (remove) getC().getNotFulfilledExpectations().remove(index);
-                }
-            }
-        }
-        //processing events that "didn't happen" and were expected in this affective cycle
-        //Averaging negative expectedness and removing this value from the previous result
-        /*double av=0;
-        int count=0;
-        for (int i = 0; i<getC().getNotFulfilledExpectations().size();i++)
-        {
-            av = av+getC().getNotFulfilledExpectations().get(i).getProbability();
-            count++;
-        }
-        if (remove) getC().getNotFulfilledExpectations().clear();
-        if (count > 0) result2 = (av/count);
-
-        if (result1!=null && result2!=null){result = Math.max(-1,result1 - result2);}*/
-        if (result1!=null){
-            if (result1 == 0){ // probability zero means that the event is not expected
-                result = -1.0;
-            }else{
-                result = result1; // simply returns the event probability if fulfilled or
-                                    //its negative value if not fulfilled
-            }
-        }
-        
-        return  result; // range [-1,1]
-        }
-
-        """
-        
-        # Translating the java code to python
+       
         result1 = None
         result2 = None
         result = None
@@ -862,38 +708,6 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         return result # range [-1,1]
     
     def desirability(self, event):
-        """
-        JAVA IMPLEMENTATION:
-        
-        public Double desirability(Event event){
-        Double concernVal = null;
-        Literal concern = ag.getConcern(); # This function return the first concern of the agent
-
-        if(concern != null){
-            if (!event.getTrigger().isGoal()){ # If the event is not a goal
-                if (event.getTrigger().getOperator()==TEOperator.add ){  # If the event is an addition of a belief
-                    //adding the new literal if the event is an addition of a belief
-                    concernVal = applyConcernForAddition(event,concern);
-                }
-                else
-                    if (event.getTrigger().getOperator()==TEOperator.del) 
-                        concernVal = applyConcernForDeletion(event,concern);
-            }
-            
-            if (concernVal!=null){
-                if (concernVal<0 || concernVal>1){
-                    concernVal = null;
-                    logger.log(Level.WARNING, "Desirability can't be calculated. Concerns value out or range [0,1]!");
-                }
-                    
-            }
-        }
-        return concernVal;
-        
-        }
-
-        """
-        # Translating the java code to python
         concernVal = None
         concern = self.concerns[("concern__",1)][0] # This function return the first concern of the agent
         
@@ -902,9 +716,9 @@ class AffectiveAgent(agentspeak.runtime.Agent):
             print(event)
             if event[1].name == "addition":
                 # adding the new literal if the event is an addition of a belief
-                concernVal = self.applyConcernForAddition(event,concern) # Not implemented yet
+                concernVal = self.applyConcernForAddition(event,concern) 
             else:
-                concernVal = self.applyConcernForDeletion(event,concern) # Not implemented yet
+                concernVal = self.applyConcernForDeletion(event,concern) 
                 
             if concernVal != None:
                 if float(concernVal) < 0 or float(concernVal) > 1:
@@ -914,61 +728,10 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         return float(concernVal)
     
     def applyConcernForAddition(self, event, concern):
-        """
-        
-        JAVA IMPLEMENTATION:
-        
-         /** Gets the <i>concern</i>'s value for <i>event</i> when it is an addition event 
-        * @param event Addition event
-        * @param concern Concern whose value should be evaluated
-        * */
-        public Double applyConcernForAddition(Event event, LogicalFormula concern){
-            Double result = null;
-            Literal tmpLit = null; 
-            Literal eventLiteral = event.getTrigger().getLiteral();
-            Intention I = getC().getSelectedIntention();
-            Unifier un = new Unifier();
-            if (I != null){
-                IntendedMeans Im = I.peek();
-                if (Im!=null)
-                    un = Im.getUnif();
-            }
-
-
-            Iterator<Unifier> unIt;
-            synchronized (ag.getBB().getLock()){
-                Literal l = ag.getBB().contains(eventLiteral);
-                if (l!=null){
-                    tmpLit = (Literal) l.clone();
-                    ag.getBB().remove(tmpLit);
-                    }
-                ag.getBB().add(eventLiteral);
-                
-                LogicalFormula f = (LogicalFormula)concern;
-                unIt = f.logicalConsequence(ag, un);
-                
-                if (unIt!=null && unIt.hasNext()){
-                    Unifier un1 = unIt.next();
-                    Term t =  (un1.get( (VarTerm) ((Literal)concern).getTerm(0)));
-                    result =((NumberTermImpl)t).solve();
-                }
-                
-                ag.getBB().remove(eventLiteral);
-                if (l!=null)
-                    ag.getBB().add(tmpLit);
-            }
-            return result;
-            }
-
-        """
-            
-        # Translating the java code to python
-        print(concern)
         # We add the new belief to the agent's belief base, so we can calculate the concern value
         self.add_belief(event[0], agentspeak.runtime.Intention().scope)
         # We calculate the concern value
         concern_value = self.test_concern(concern.head, agentspeak.runtime.Intention(), concern)
-        print("Concern value for addition: "+str(concern_value))
         # We remove the belief from the agent's belief base again
         self.remove_belief(event[0], agentspeak.runtime.Intention())
 
@@ -978,43 +741,6 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         
         
     def applyConcernForDeletion(self, event, concern):
-        """
-
-        JAVA IMPLEMENTATION:
-        
-            /** Gets the <i>concern</i>'s value for <i>event</i> when it is a deletion event 
-            * @param event Deletion event
-            * @param concern Concern whose value should be evaluated
-            * */
-            public Double applyConcernForDeletion(Event event, LogicalFormula concern){
-                Literal tmpLit = null; 
-                Literal eventLiteral = event.getTrigger().getLiteral();
-                Unifier un = new Unifier();
-                Iterator<Unifier> unIt;
-                Double result = null;
-                synchronized (ag.getBB().getLock()){
-                    Literal l =ag.getBB().contains(eventLiteral);
-                    if (l!=null){
-                        tmpLit = (Literal) l.clone();
-                        ag.getBB().remove(tmpLit);
-                        }
-                    unIt = concern.logicalConsequence(ag, un);
-                    if (unIt!=null && unIt.hasNext()){
-                        Unifier un1 = unIt.next();
-                        Term t =  (un1.get( (VarTerm) ((Literal)concern).getTerm(0)));
-                        result =((NumberTermImpl)t).solve();
-                    }
-                    if (l!=null)
-                        ag.getBB().add(tmpLit);
-                }
-                return result;
-            }
-            
-        }
-
-        """
-        
-        # Translating the java code to python
 
         # We remove the belief from the agent's belief base, so we can calculate the concern value
         self.remove_belief(event[0], agentspeak.runtime.Intention())
@@ -1030,38 +756,6 @@ class AffectiveAgent(agentspeak.runtime.Agent):
             
     
     def applyAppraisal(self) -> bool:
-        """
-        JAVA IMPLEMENTATION:
-        
-        private void applyAppraisal() {
-        logger.fine("-->> Doing appraisal state <<-- "+" thread "+Thread.currentThread().getName());
-        appCycleNo++;
-
-        PairEventDesirability ped = null; 
-        synchronized (getLock()){
-            ped = eventsToProcess.poll();
-        }
-
-        if (ped == null){
-                logger.fine("Doing Appraisal of event: null ... "+emEngine.getClass().getName());
-                emEngine.appraisal(null,0.0);
-                currentEvent = null;
-                eventProcessedInCycle = false;
-            }
-        else{
-                logger.fine("Doing Appraisal of event: " + ped.event+" ... "+emEngine.getClass().getName());
-                eventProcessedInCycle = emEngine.appraisal(ped.event,ped.desirability);
-                currentEvent = ped.event;
-            }
-        
-        if (emEngine.cleanAffectivelyRelevantEvents())
-            getC().getMEM().clear();
-
-        //logger.fine("APPRAISAL VARIABLES "+getC().getAV().getValues());
-        step = State.UpAs;
-
-        }
-        """
         
         ped = PairEventDesirability(None)
         if True: # while self.lock instead of True for the real implementation
@@ -1087,20 +781,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         self.current_step = "UpAs"
         return True
     def applyCope(self):
-        """
-        JAVA IMPLEMENTATION:
-
-        private void applyCope() {
-        logger.fine("-->> Doing cope <<--");
-        while (emEngine.goOnSelectingCs() && !getC().getCS().isEmpty())
-            emEngine.cope();
-        step = State.Appr;
-        //runingAffectiveCycle = false;
-        }
-
-        """
         
-        # Translating the java code to python
         SelectingCs = True
         while SelectingCs() and self.C["CS"]:
             SelectingCs = self.cope()
@@ -1108,25 +789,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         return True
     
     def cope(self):
-        """
         
-        JAVA IMPLEMENTATION:
-        
-        public void cope() {
-        CopingStrategy cs = null;
-        if (!getC().getCS().isEmpty()){
-            cs = getC().getCS().remove(0);
-            synchronized (ag.getCsLok()){
-                ag.addCS(cs.clone());
-            }
-        }
-        else
-            selectingCs = false;
-        }
-
-        """ 
-        
-        # Python implementation 
         
         if self.C["CS"]:
             cs = self.C["CS"].pop(0)
@@ -1136,51 +799,14 @@ class AffectiveAgent(agentspeak.runtime.Agent):
             return False
         
     def applySelectCopingStrategy(self):
-        """
-        
-        JAVA IMPLEMENTATION:
-        
-        private void applySelectCopingStrategy() {
-        logger.fine("-->> Doing select coping strategy <<--");
-        getC().getCS().clear();     
-        emEngine.selectCs();
-        step = State.Cope;
-        }  
-
-        """
-        
-        # Translating the java code to python
+       
         self.C["CS"] = []
         self.selectCs() # is not implemented yet
         self.current_step = "Cope"
         return True
     
     def selectCs(self):
-        """
         
-        JAVA IMPLEMENTATION:
-        
-        public void selectCs() {
-        List<String> AClabel = getC().getAfE();
-        boolean logCons = false;
-        boolean asContainsCs = false;
-        if (AClabel.size()!=0 && ag.getPersonality().getCopingStrategies() != null){
-            for (CopingStrategy cs : ag.getPersonality().getCopingStrategies() )
-            {
-                if (AClabel.contains(cs.getAffectCategory().toString())) {
-                    Unifier un = new Unifier();
-                    logCons = cs.getContext().logicalConsequence(ag, un).hasNext();
-                    if (logCons) getC().getCS().add(cs);
-                    asContainsCs = true;
-                }
-            }
-            if(asContainsCs) getC().getAfE().clear(); 
-        }
-        }
-
-        """
-        # Translating the java code to python not finished yet
-        # Parser is not implemented
         AClabel = self.C["AfE"]
         logCons = False
         asContainsCs = False
@@ -1198,19 +824,6 @@ class AffectiveAgent(agentspeak.runtime.Agent):
     
     
     def applyUpdateAffState(self):
-    
-        """
-        JAVA IMPLEMENTATION
-                logger.fine("-->> Doing update affective state <<--");
-            if (eventProcessedInCycle) // update only when an event was appraised
-                emEngine.UpdateAS();
-            if (emEngine.isAffectRelevantEvent(currentEvent))
-                getC().getMEM().add((Event) currentEvent.clone());
-            step = State.SelCs;;
-        }
-
-        """
-        # Translating the java code to python
         
         if self.eventProcessedInCycle: # update only when an event was appraised
             self.UpdateAS() # not implemented yet
@@ -1220,121 +833,12 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         return True
     
     def isAffectRelevantEvent(self, currentEvent):
-        
-        """
-        
-        JAVA IMPLEMENTATION
-        
-        public boolean isAffectRelevantEvent(Event event) {
-        boolean result = event!=null;
-        for ( PADExpression ex:affRevEventThreshold)
-            result = result && ex.evaluate(((PAD)getC().getAS()).getP(), ((PAD)getC().getAS()).getA(),((PAD)getC().getAS()).getD());
-        return result;
-        } 
-        """
-        
-        # Translating the java code to python, i don't the meaning of the evaluate function
         result = currentEvent != None
         for ex in self.affRevEventThreshold: 
             result = result and ex.evaluate(self.C["AS"]["P"], self.C["AS"]["A"], self.C["AS"]["D"])
         return result
-    def UpdateAS(self):
     
-        """
-        JAVA IMPLEMENTATION:
-        
-        public void UpdateAS() {
-    	if (getAS() instanceof PAD){
-    		PAD as = new PAD();
-    		PAD calculated_as = deriveASFromAppraisalVariables();
-    		if (calculated_as!=null){
-    			PAD current_as = (PAD) getAS(); 
-    			logger.fine("expectedness: " + getC().getAV().getValues().get(AppraisalVarLabels.expectedness.name()) + 
-    					", desirability: " + getC().getAV().getValues().get(AppraisalVarLabels.desirability.name()) + 
-    					", causal_attribution: " + getC().getAV().getValues().get(AppraisalVarLabels.causal_attribution.name()) + 
-    					", likelihood: " + getC().getAV().getValues().get(AppraisalVarLabels.likelihood.name()) + 
-    					", controllability: " + getC().getAV().getValues().get(AppraisalVarLabels.controllability.name()));
-
-    			Double tmpVal = null;
-    			Double vDiff_P = null;
-    			Double vDiff_A = null;
-    			Double vDiff_D = null;
-    			Double vectorToAdd_P = null;
-    			Double vectorToAdd_A = null;
-    			Double vectorToAdd_D = null;
-    			Double lengthToAdd  = null;
-    			PAD VEC = calculated_as;
-    			// Calculating the module of VEC
-    			Double VECmodule = Math.sqrt( Math.pow(VEC.getP(),2) + Math.pow(VEC.getA(),2) + Math.pow(VEC.getD(),2) );
-
-    			/* Applying the pull and push of ALMA */
-    			if (PAD.betweenVECandCenter( current_as, VEC) | // current_as between calculated_as and (0,0,0)
-    					!PAD.sameOctant(current_as, VEC)){ // or the are not in the same octant
-    				/* PULL PHASE: the current mood is between zero and the virtual emotion center (VEC) or 
-    				 * it is not in the same octant as the VEC. 
-    				 * The current mood is attracted towards the VEC. The 
-    				 * intensity of the VEC defines how strong the current mood is attracted. 
-    				 * This is can be seen as a vector sum, where the vector of the current affective state (vAS)
-    				 * is added the vector formed by 'as' and VEC reduced by DISPLACEMENT. This is 
-    				 * calculated as follows: 
-    				 * */ 
-    				//1. A vector (vDiff_P,vDiff_A,vDiff_D) that starts on 'as' and ends in VEC is determined
-    				vDiff_P = VEC.getP() - current_as.getP() ;
-    				vDiff_A = VEC.getA() - current_as.getA() ;
-    				vDiff_D = VEC.getD() - current_as.getD() ;
-
-
-    			}else{ //as in the same octant than VEC and as not between VEC and center
-    				/* PUSH PHASE: the current mood is beyond (or at) the virtual emotion center (VEC) and 
-    				 * the current mood is in the same octant as the VEC. 
-    				 * The current mood is pushed away, further into the current mood octant in which the 
-    				 * mood is located. The push phase realizes the concept that a person's mood gets 
-    				 * more intense the more experiences the person make that are supporting this mood. The   
-    				 * intensity of the VEC defines how strong the current mood is pushed away. 
-    				 * This is can be seen as a vector sum, where the vector of the current affective state (vAS)
-    				 * is added the vector formed by 'as' and VEC reduced by DISPLACEMENT. This is 
-    				 * calculated as follows: 
-    				 * */ 
-    				//1. A vector (vDiff_P,vDiff_A,vDiff_D) that starts on VEC and ends on 'as' is determined
-    				vDiff_P = current_as.getP() - VEC.getP() ;
-    				vDiff_A = current_as.getA() - VEC.getA() ;
-    				vDiff_D = current_as.getD() - VEC.getD() ;
-
-    			}
-
-    			//2. The module of the vector VEC () is multiplied by the DISPLACEMENT and this 
-    			//is the length that will have the vector to be added to 'as'
-    			lengthToAdd = VECmodule * DISPLACEMENT ;
-
-    			//3. Determining the vector to add
-    			vectorToAdd_P = vDiff_P * DISPLACEMENT ;
-    			vectorToAdd_A = vDiff_A * DISPLACEMENT ;
-    			vectorToAdd_D = vDiff_D * DISPLACEMENT ;
-
-    			//4. The vector vectorToAdd is added to 'as' and this is the new value of 
-    			// the current affective state
-    			tmpVal = current_as.getP() + vectorToAdd_P ;
-    			if (tmpVal > 1){tmpVal = 1.0;}else{if (tmpVal < -1){ tmpVal = -1.0 ;}}
-    			as.setP( Math.round(tmpVal * 10.0) / 10.0 );
-    			tmpVal = current_as.getA() + vectorToAdd_A ;                        tmpVal = as.getA() + tmpVal;
-    			if (tmpVal > 1){tmpVal = 1.0;}else{if (tmpVal < -1){ tmpVal = -1.0 ;}}
-    			as.setA(  Math.round(tmpVal * 10.0) / 10.0 );
-    			tmpVal = current_as.getD() + vectorToAdd_D ;                        tmpVal = as.getD() + tmpVal;
-    			if (tmpVal > 1){tmpVal = 1.0;}else{if (tmpVal < -1){ tmpVal = -1.0 ;}}
-    			as.setD(  Math.round(tmpVal * 10.0) / 10.0 );
-
-
-    			getC().setAS(as);
-    			List<String> AClabel = getAC().getACLabel(getC().getAS());
-    			getC().setAfE(AClabel);
-    		}
-    	}
-        }
-        
-        """
-        
-        # Translating the java code to python
-        
+    def UpdateAS(self):
         self.DISPLACEMENT = 0.5
         
         if isinstance(self.AS, PAD): 
@@ -1411,55 +915,6 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         pass
                  
     def getACLabel(self):
-        """
-        
-        JAVA IMPLEMENTATION:
-        
-        public List<String> getACLabel(AffectiveState as){
-        List<String> result = new ArrayList<String>();
-        boolean matches = true;
-        Range r;
-        
-        for (String acl : affectiveCategories.keySet()){
-                matches = true;
-                if (affectiveCategories.get(acl)!=null){
-                    if(affectiveCategories.get(acl).size() == as.getComponentsNumber()){
-                        /*String txt="";
-                        for (int acIndex=0; acIndex<affectiveCategories.get(acl).size(); acIndex++){
-                            txt = txt+
-                            		"ac index: "+acIndex+
-                            		", min: "+ (affectiveCategories.get(acl).get(acIndex).getMin())+
-                            		", max: "+affectiveCategories.get(acl).get(acIndex).getMax();
-                        }
-                        logger.fine(txt);*/
-                        
-                        for (int i = 0; i < as.getComponentsNumber(); i++){
-                            r = affectiveCategories.get(acl).get(i);
-                            matches = matches && as.getComponents().get(i) >= r.getMin() && 
-                                                 as.getComponents().get(i) <= r.getMax();
-                            /*logger.fine("Component index: "+i+
-                            		", component: "+as.getComponents().get(i)+
-                            		", affect category "+acl+"("+r.getMin()+","+r.getMax()+") matches "+matches);*/
-                        }
-                    }else{
-                        try {
-                            throw new Exception("The number of components for the affective category " + acl + " must be the same as the number of the components for the affective state");
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    }
-                    
-                }
-                if (matches){
-                    result.add(acl);
-                }
-            }
-        return result;
-        }
-
-        """
-        
-        # Translating the java code to python
         
         result = []
         matches = True
@@ -1483,81 +938,6 @@ class AffectiveAgent(agentspeak.runtime.Agent):
                         
                 
     def deriveASFromAppraisalVariables(self):
-        """
-        JAVA IMPLEMENTATION:
-        
-            public PAD deriveASFromAppraisalVariables(){
-        List<Emotions> em = new ArrayList<Emotions>();
-        if (getC().getAV().getValues().containsKey(AppraisalVarLabels.expectedness.name()) &&
-                getC().getAV().getValues().get(AppraisalVarLabels.expectedness.name()) != null &&
-                getC().getAV().getValues().get(AppraisalVarLabels.expectedness.name()) < 0 )
-            em.add(Emotions.surprise);
-        if (getC().getAV().getValues().containsKey(AppraisalVarLabels.desirability.name()) &&
-                getC().getAV().getValues().get(AppraisalVarLabels.desirability.name()) != null &&
-                getC().getAV().getValues().containsKey(AppraisalVarLabels.likelihood.name()) &&
-                getC().getAV().getValues().get(AppraisalVarLabels.likelihood.name()) != null ){
-            if (getC().getAV().getValues().get(AppraisalVarLabels.desirability.name()) > 0.5 ){
-                if (getC().getAV().getValues().get(AppraisalVarLabels.likelihood.name()) < 1)
-                    em.add(Emotions.hope);
-                else if (getC().getAV().getValues().get(AppraisalVarLabels.likelihood.name()) == 1)
-                    em.add(Emotions.joy);
-            }else{ //desirability <= 0.5
-                if (getC().getAV().getValues().get(AppraisalVarLabels.likelihood.name()) < 1)
-                    em.add(Emotions.fear);
-                else if (getC().getAV().getValues().get(AppraisalVarLabels.likelihood.name()) == 1)
-                    em.add(Emotions.sadness);
-                if (    getC().getAV().getValues().containsKey(AppraisalVarLabels.causal_attribution.name()) &&
-                        getC().getAV().getValues().containsKey(AppraisalVarLabels.controllability.name()) &&
-                        getC().getAV().getValues().get(AppraisalVarLabels.causal_attribution.name())!=null &&
-                        getC().getAV().getValues().get(AppraisalVarLabels.controllability.name())!=null &&
-                        getC().getAV().getValues().get(AppraisalVarLabels.causal_attribution.name()) == CausalAttribution.other.ordinal() &&
-                        getC().getAV().getValues().get(AppraisalVarLabels.controllability.name()) >0.7)
-                    em.add(Emotions.anger);
-            }
-        }
-        PAD result = new PAD();
-        result.setP(0.0); result.setA(0.0); result.setD(0.0);
-        for (Emotions e : em)
-            switch (e){
-                case anger :    result.setP(result.getP()-0.51); // Angry(Russell & Mehrabian 1977, p. 286ff)
-                                result.setA(result.getA()+0.59);
-                                result.setD(result.getD()+0.25);
-                                break;
-                case fear :     result.setP(result.getP()-0.64); //Fearful (Russell & Mehrabian 1977, p. 286ff)
-                                result.setA(result.getA()+0.60);
-                                result.setD(result.getD()-0.43);
-                                break;
-                case hope :     result.setP(result.getP()+0.2); //ALMA
-                                result.setA(result.getA()+0.2);
-                                result.setD(result.getD()-0.1);
-                                break;
-                case joy :      result.setP(result.getP()+0.76); //joyfull (Russell & Mehrabian 1977, p. 286ff)
-                                result.setA(result.getA()+0.48);
-                                result.setD(result.getD()+0.35);
-                                break;
-                case sadness :  result.setP(result.getP()-0.63); //sad (Russell & Mehrabian 1977, p. 286ff)
-                                result.setA(result.getA()-0.27);
-                                result.setD(result.getD()-0.33);
-                                break;
-                case surprise : result.setP(result.getP()+0.4); //Surprised (Russell & Mehrabian 1977, p. 286ff)
-                                result.setA(result.getA()+0.67);
-                                result.setD(result.getD()-0.13);
-                                break;
-            }
-        // Averaging
-        if (em.size()>0){
-            result.setP(result.getP()/em.size()); 
-            result.setA(result.getA()/em.size());
-            result.setD(result.getD()/em.size());
-        }else
-            result=null;
-        return result;
-        
-        }
-
-        """
-        
-        # Translating the java code to python
         em = []
         if self.AV["expectedness"] != None and self.AV["expectedness"] < 0:
             em.append("surprise")
@@ -1615,15 +995,6 @@ class AffectiveAgent(agentspeak.runtime.Agent):
     
     
     def cleanAffectivelyRelevantEvents(self) -> bool:
-        """
-        # JAVA IMPLEMENTATION:
-        
-        public abstract boolean cleanAffectivelyRelevantEvents();
-            /**
-            * @return True if it is necessary go on selecting and executing 
-            * coping strategies 
-            */
-        """
         return True
         
 
