@@ -825,9 +825,9 @@ class AffectiveAgent(agentspeak.runtime.Agent):
     
     def applyUpdateAffState(self):
         
-        if self.eventProcessedInCycle: # update only when an event was appraised
-            self.UpdateAS() # not implemented yet
-        if self.isAffectRelevantEvent(self.currentEvent): # not implemented yet
+        if self.eventProcessedInCycle:
+            self.UpdateAS() 
+        if self.isAffectRelevantEvent(self.currentEvent): 
             self.Mem.append(self.currentEvent)
         self.current_step = "SelCs"
         return True
