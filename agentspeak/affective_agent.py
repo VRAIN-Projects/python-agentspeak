@@ -31,45 +31,40 @@ C = {}
 
 class PADExpression():
     """
-    JAVA IMPLEMENTATION:
+    This class is used to represent the PAD expressions.
     
-    public class PADExpression {
-        Double PThreshold, AThreshold, DThreshold;
-        CondOperator operator1, operator2;
-        
-        public PADExpression(Double pThres, CondOperator op1, Double aThres, CondOperator op2, Double dThres){
-            PThreshold = pThres;
-            operator1 = op1;
-            AThreshold = aThres;
-            operator2 = op2;
-            DThreshold = dThres;
-        }
-        
-        public boolean evaluate(Double p, Double a, Double d){
-            boolean result = true;
-            if (operator1 == CondOperator.and)  result = ((p<=PThreshold) && (p<=AThreshold));
-            else    result = ((p<=PThreshold) || (p<=AThreshold));
-            if (operator2 == CondOperator.and)  result = (result && (p<=AThreshold));
-            else    result = (result || (p<=AThreshold));
-                 
-            return result;
-        }
-
-    } 
-
+    PAD = {Pleasure, Arousal, Dominance}
     """
-    
-    # Translating the java code to python
-     
+         
     def __init__(self, pThres, op1, aThres, op2, dThres):
+        """
+        Constructor of the PADExpression class.
+        
+        Args:
+            pThres (float): Pleasure threshold.
+            op1 (str): Operator 1.
+            aThres (float): Arousal threshold.
+            op2 (str): Operator 2.
+            dThres (float): Dominance threshold.
+        """
         self.PThreshold = pThres
         self.operator1 = op1
         self.AThreshold = aThres
         self.operator2 = op2
         self.DThreshold = dThres
         
-    def evaluate(self, p, a, d): 
-        # Why we need a and d if we are not using them?
+    def evaluate(self, p, a, d) -> bool: 
+        """
+        This method is used to evaluate the PAD expression.
+
+        Args:
+            p (float): Pleasure value.
+            a (float): Arousal value.
+            d (float): Dominance value.
+        Returns:
+            bool: True if the PAD expression is evaluated, False otherwise.
+        """
+        
         result = True
         if self.operator1 == "and":
             result = ((p <= self.PThreshold) and (p <= self.AThreshold))
@@ -82,88 +77,15 @@ class PADExpression():
         return result
 
 class Personality():
+    """ 
+    This class is used to represent the personality of the agent.
+    
     """
-
-    JAVA IMPLEMENTATION:
-    
-    public abstract class Personality {
-    protected Logger logger = Logger.getLogger(Personality.class.getName());
-
-    /**
-     * Names of the elements of the personality traits. They are the same 
-     * for every instance of the same class
-     */
-    protected List<String> traitsLabels ;
-    private List<Double> traits = null;
-    /** Rationality level. By default completely emotional */
-    private Double rationalityLevel  = 0.0; 
-    private List<CopingStrategy> copingStrategies = null; 
-    public abstract void setTraitsLabels();
-    public abstract Personality clone();
-    
-    /**
-     * Initializes the personality traits and traits labels
-     */
-    public void init(){
-        traitsLabels = new  ArrayList<String>();
-        traits = new ArrayList<Double>();
-        setTraitsLabels();
-        if (traitsLabels!=null)
-        traits = new ArrayList<Double>( Collections.nCopies( traitsLabels.size(),0.0));
-    };
-    
-
-    
-    public Double getRationalityLevel() {
-        return rationalityLevel;
-    }
-
-    public void setRationalityLevel(Double rationalityLevel) {
-        this.rationalityLevel = rationalityLevel;
-    }
-
-    public List<CopingStrategy> getCopingStrategies() {
-        return copingStrategies;
-    }
-
-    public void setCopingStrategies(List<CopingStrategy> copingStrategies) {
-        this.copingStrategies = copingStrategies;
-    }
-    
-    public Personality() {
-        super();
-        init();
-    }
-    
-    public void setTraitsLabels(List<String> traitsLab) {
-        traitsLabels = traitsLab;
-    }
-    
-    public List<String> getTraitsLabels() {
-        return traitsLabels;
-    }
-    
-    public List<Double> getTraits() {
-        return traits;
-    }
-
-    public void setTraits(List<Double> traits) {
-        this.traits = traits;
-    }
-
-    public void setTraits(ListTerm traits) {
-        this.traits.clear();
-        for (int i=0; i<traits.size();i++)
-            this.traits.add(  ((NumberTermImpl)traits.get(i)).solve() );
-    }
-
-    }
-
-    """
-    
-    # Translating the java code to python
-    
+        
     def __init__(self):
+        """
+        Constructor of the Personality class.
+        """
         self.traitsLabels = []
         self.traits = []
         self.rationalityLevel = 0.0
@@ -171,41 +93,116 @@ class Personality():
         self.init()
         
     def init(self):
+        """ 
+        This method is used to initialize the personality of the agent.
+        """
         self.traitsLabels = []
         self.traits = []
-        self.setTraitsLabels()
+        self.setTraitsLabels([])
         if self.traitsLabels != None:
             self.traits = [0.0] * len(self.traitsLabels)
-    
-    def setTraitsLabels(self):
-        pass
      
     def clone(self):
-        pass
+        """
+        This method is used to clone the personality of the agent.
+        """
+        return self
      
     def getRationalityLevel(self):
+        """ 
+        This method is used to get the rationality level of the agent.
+
+        Returns:
+            float: Rationality level of the agent.
+        """
         return self.rationalityLevel
      
-    def setRationalityLevel(self, rationalityLevel):
+    def setRationalityLevel(self, rationalityLevel) -> None:
+        """
+        This method is used to set the rationality level of the agent.
+        
+        Args:
+            rationalityLevel (float): Rationality level of the agent.
+        """
         self.rationalityLevel = rationalityLevel
     
     def getCopingStrategies(self):
+        """
+        This method is used to get the coping strategies of the agent.
+        
+        Returns:
+            list: Coping strategies of the agent.
+        """
         return self.copingStrategies
     
-    def setCopingStrategies(self, copingStrategies):
+    def setCopingStrategies(self, copingStrategies) -> None:
+        """
+        This method is used to set the coping strategies of the agent.
+        
+        Args:
+            copingStrategies (list): Coping strategies of the agent.
+        """
         self.copingStrategies = copingStrategies
          
     def setTraitsLabels(self, traitsLab):
+        """
+        This method is used to set the traits labels of the agent.
+         
+        Args:
+            traitsLab (list): Traits labels of the agent.
+        """
         self.traitsLabels = traitsLab   
          
     def getTraitsLabels(self):
+        """ 
+        This method is used to get the traits labels of the agent.
+        
+        Returns:
+            list: Traits labels of the agent.
+        """
         return self.traitsLabels
     
     def getTraits(self):
+        """
+        This method is used to get the traits of the agent.
+        
+        Returns:
+            list: Traits of the agent.
+        """
         return self.traits
     
     def set_traits(self, traits):
+        """
+        This method is used to set the traits of the agent.
+        
+        Args:
+            traits (list): Traits of the agent.
+        """
         self.traits = traits
+        
+        
+class TermQuery(agentspeak.runtime.TermQuery):
+    
+    def execute_concern(self, agent, intention, concern):
+        # Boolean constants.
+        term = agentspeak.evaluate(self.term, intention.scope)
+        if term is True:
+            yield
+            return
+        elif term is False:
+            return
+
+        choicepoint = object()
+
+        concern = copy.deepcopy(concern)
+        intention.stack.append(choicepoint)
+        
+
+        if agentspeak.unify(term, concern.head, intention.scope, intention.stack):
+            for _ in concern.query.execute(agent, intention):
+                yield
+
+        agentspeak.reroll(intention.scope, intention.stack, choicepoint)
         
 class AffectiveAgent(agentspeak.runtime.Agent):
     """
@@ -265,30 +262,50 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         self.notFulfilledExpectations = []
         
     def initAffectiveThreshold(self):
-    
+        """
+        This method is used to initialize the affective thresholds of the agent.
         """
         
-        private static double DISPLACEMENT = 0.5;
-    
-        private List<PADExpression> affRevEventThreshold = new ArrayList<PADExpression>();
-
-        public void initAffectiveThreshold(){
-            affRevEventThreshold.add(new PADExpression(0.8, CondOperator.or, 0.8, CondOperator.and, 0.0));
-        }
-        """
-        
-        # Translating the java code to python
         self.DISPLACEMENT = 0.5
         self.affRevEventThreshold = []
         self.affRevEventThreshold.append(PADExpression(0.8, "or", 0.8, "and", 0.0))
         
-
-        
     def add_concern(self, concern):
         """ 
         This method is used to add a concern to the agent.
+        
+        Args:
+            concern (Concern): Concern to be added.
         """
         self.concerns[(concern.head.functor, len(concern.head.args))].append(concern)
+        
+    def test_concern(self, term, intention, concern):
+        """This function is used to know the value of a concern
+
+        Args:
+            term (Literal): Term of the concern
+            intention (Intention): Intention of the agent
+            concern (Concern): Concern of the agent
+
+        Raises:
+            AslError:  If the term is not a Literal
+
+        Returns:
+            OR[bool, str]: If the concern is not found, return False. If the concern is found, return the value of the concern
+        """
+        term = agentspeak.evaluate(term, intention.scope)
+
+        if not isinstance(term, agentspeak.Literal):
+            raise AslError("expected concern literal, got: '%s'" % term)
+
+        query = TermQuery(term)
+
+        try:
+            next(query.execute_concern(self, intention, concern))
+            concern_value = " ".join(asl_str(agentspeak.freeze(t, intention.scope, {})) for t in term.args)
+            return concern_value
+        except StopIteration:
+            return False
         
     def call(self, trigger: agentspeak.Trigger, goal_type:agentspeak.GoalType, term: agentspeak.Literal, calling_intention: agentspeak.runtime.Intention, delayed: bool = False):
         """ This method is used to call an event.
@@ -325,12 +342,9 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         if goal_type == agentspeak.GoalType.belief: 
             # We recieve a belief and the affective cycle is activated.
             # We need to provide to the sunction the term and the Trigger type.
-            if not any([annotation.functor == "source" for annotation in term.annots]):
-                print("There no source annotation in the belief.")
             self.event_queue.append((term, trigger))
             self.appraisal((term, trigger),0)
             if trigger == agentspeak.Trigger.addition:
-                print("Belief addition: ", term) 
                 self.add_belief(term, calling_intention.scope)
             else: 
                 found = self.remove_belief(term, calling_intention) 
@@ -600,6 +614,15 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         return True
     
     def affectiveTransitionSystem(self):
+        """
+        This method is used to apply the second part of the reasoning cycle.
+        This part consists of the following steps:
+        - Appraisal
+        - Update Aff State
+        - Select Coping Strategy
+        - Coping
+        """
+        
         options = {
             "Appr" : self.applyAppraisal,
             "UpAs" : self.applyUpdateAffState,
@@ -618,6 +641,16 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         return True
     
     def appraisal(self, event, concern_value):
+        """
+        This method is used to apply the appraisal process.
+        
+        Args:
+            event (tuple): Event to be appraised.
+            concern_value (float): Concern value of the event.
+        
+        Returns:
+            bool: True if the event was appraised, False otherwise.
+        """
         selectingCs = True
         result = False
         if event != None:
@@ -625,17 +658,19 @@ class AffectiveAgent(agentspeak.runtime.Agent):
                 if len(self.concerns):
                     desirability =  self.desirability(event)
                     self.AV["desirability"] = desirability
-                    print("Desirability of event ",event[0], " : ",self.AV["desirability"])              
 
                 # Calculating likelihood. 
                 likelihood = self.likelihood(event)
+                self.AV["likelihood"] = likelihood
 
                 # Calculating causal attribution
                 causal_attribution = self.causalAttribution(event)
+                self.AV["causal_attribution"] = causal_attribution
 
                 # Calculating controllability: 
                 if len(self.concerns):
                     controllability = self.controllability(event,concern_value,desirability)
+                    self.AV["controllability"] = controllability
                     pass
                 result = True
         else:
@@ -647,6 +682,17 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         return result
     
     def controllability(self, event, concernsValue, desirability):
+        """
+        This method is used to calculate the controllability of the event.
+        
+        Args:
+            event (tuple): Event to be appraised.
+            concernsValue (float): Concern value of the event.
+            desirability (float): Desirability of the event.
+             
+        Returns:
+            float: Controllability of the event.
+        """
         result = None
         if desirability != None and concernsValue != None:
             result = desirability - concernsValue
@@ -657,6 +703,15 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         
         
     def causalAttribution(self, event):
+        """
+        This method is used to calculate the causal attribution of the event.
+        
+        Args:
+            event (tuple): Event to be appraised.
+            
+        Returns:
+            str: Causal attribution of the event.
+        """
         ca = None
         if any([annotation.functor == "source" for annotation in event[0].annots]):
             ca = "other"
@@ -664,7 +719,16 @@ class AffectiveAgent(agentspeak.runtime.Agent):
             ca = "self"
         return ca
     
-    def likelihood(self, event):        
+    def likelihood(self, event):
+        """
+        This method is used to calculate the likelihood of the event.
+        
+        Args:
+            event (tuple): Event to be appraised.
+            
+        Returns:
+            float: Likelihood of the event.
+        """        
         result = None
         if event != None and event[1].name == "addition":
             result = 1.0
@@ -672,6 +736,16 @@ class AffectiveAgent(agentspeak.runtime.Agent):
      
         
     def expectedness(self, event, remove):
+        """
+        This method is used to calculate the expectedness of the event.
+         
+        Args:
+            event (tuple): Event to be appraised.
+            remove (bool): True if the event is removed, False otherwise.
+             
+        Returns:
+            float: Expectedness of the event.
+        """
        
         result1 = None
         result2 = None
@@ -708,12 +782,20 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         return result # range [-1,1]
     
     def desirability(self, event):
+        """
+        This method is used to calculate the desirability of the event.
+         
+        Args:
+            event (tuple): Event to be appraised.
+            
+        Returns:
+            float: Desirability of the event.
+        """
         concernVal = None
         concern = self.concerns[("concern__",1)][0] # This function return the first concern of the agent
         
          
         if concern != None:
-            print(event)
             if event[1].name == "addition":
                 # adding the new literal if the event is an addition of a belief
                 concernVal = self.applyConcernForAddition(event,concern) 
@@ -723,11 +805,21 @@ class AffectiveAgent(agentspeak.runtime.Agent):
             if concernVal != None:
                 if float(concernVal) < 0 or float(concernVal) > 1:
                     concernVal = 0
-                    print("Desirability can't be calculated. Concerns value out or range [0,1]!")
                     
         return float(concernVal)
     
     def applyConcernForAddition(self, event, concern):
+        """ 
+        This method is used to apply the concern for the addition of a belief.
+        
+        Args:
+            event (tuple): Event to be appraised.
+            concern (Concern): Concern to be applied.
+            
+        Returns:
+            float: Concern value of the event.
+        """
+        
         # We add the new belief to the agent's belief base, so we can calculate the concern value
         self.add_belief(event[0], agentspeak.runtime.Intention().scope)
         # We calculate the concern value
@@ -741,12 +833,21 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         
         
     def applyConcernForDeletion(self, event, concern):
+        """ 
+        This method is used to apply the concern for the deletion of a belief.
+        
+        Args:
+            event (tuple): Event to be appraised.
+            concern (Concern): Concern to be applied.
+            
+        Returns:
+            float: Concern value of the event.
+        """
 
         # We remove the belief from the agent's belief base, so we can calculate the concern value
         self.remove_belief(event[0], agentspeak.runtime.Intention())
         # We calculate the concern value
         concern_value = self.test_concern(concern.head, agentspeak.runtime.Intention(), concern)
-        print("Concern value for deletion: "+str(concern_value))
         # We add the belief to the agent's belief base again
         self.add_belief(event[0], agentspeak.runtime.Intention())
         
@@ -756,31 +857,35 @@ class AffectiveAgent(agentspeak.runtime.Agent):
             
     
     def applyAppraisal(self) -> bool:
+        """
+        This method is used to apply the appraisal process.
+        """
         
         ped = PairEventDesirability(None)
         if True: # while self.lock instead of True for the real implementation
-            print(self.C)
-            print(self.event_queue)
             if self.event_queue:
                 ped.event = self.event_queue.pop()
             
         if ped.event == None:
-            print(ped.event)
-            self.appraisal(None, 0.0) # emEngine is not implemented yet
+            self.appraisal(None, 0.0) 
             self.currentEvent = None
             self.eventProcessedInCycle = False
         else:
-            self.appraisal(ped.event, random.random()) # emEngine is not implemented yet
+            self.appraisal(ped.event, random.random()) 
             self.currentEvent = ped.event
             self.eventProcessedInCycle = True
             
-        if self.cleanAffectivelyRelevantEvents(): # emEngine is not implemented yet
+        if self.cleanAffectivelyRelevantEvents(): 
             self.Mem = {}  
         
         # The next step is Update Aff State
         self.current_step = "UpAs"
         return True
+    
     def applyCope(self):
+        """
+        This method is used to apply the coping process.
+        """
         
         SelectingCs = True
         while SelectingCs() and self.C["CS"]:
@@ -789,23 +894,38 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         return True
     
     def cope(self):
-        
+        """
+        This method is used to apply the coping process.
+         
+        Returns:
+            bool: True if the coping strategy was applied, False otherwise.
+        """
         
         if self.C["CS"]:
             cs = self.C["CS"].pop(0)
-            self["CS"].append(cs.clone())
+            self["CS"].append(cs)
             return True
         else:
             return False
         
     def applySelectCopingStrategy(self):
+        """
+        This method is used to select the coping strategy.
+        Personality parser is not implemented yet.
+         
+        Returns:
+            bool: True if the coping strategy was selected, False otherwise.
+        """
        
         self.C["CS"] = []
-        self.selectCs() # is not implemented yet
+        self.selectCs() 
         self.current_step = "Cope"
         return True
     
     def selectCs(self):
+        """
+        This method is used to select the coping strategy.
+        """
         
         AClabel = self.C["AfE"]
         logCons = False
@@ -813,8 +933,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         if len(AClabel) != 0 and self.Ag["P"].getCopingStrategies() != None:
             for cs in self.Ag["P"].getCopingStrategies():
                 if cs.getAffectCategory().name in AClabel:
-                    un = Unifier()
-                    logCons = cs.getContext().logicalConsequence(self.ag, un).hasNext()
+                    logCons = cs.getContext().logicalConsequence(self.ag).hasNext()
                     if logCons:
                         self.C["CS"].append(cs)
                     asContainsCs = True
@@ -824,6 +943,9 @@ class AffectiveAgent(agentspeak.runtime.Agent):
     
     
     def applyUpdateAffState(self):
+        """
+        This method is used to update the affective state.
+        """
         
         if self.eventProcessedInCycle:
             self.UpdateAS() 
@@ -833,12 +955,24 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         return True
     
     def isAffectRelevantEvent(self, currentEvent):
+        """
+        This method is used to check if the event is affect relevant.
+         
+        Args:
+            currentEvent (tuple): Event to be checked.
+            
+        Returns:
+            bool: True if the event is affect relevant, False otherwise.
+        """
         result = currentEvent != None
         for ex in self.affRevEventThreshold: 
             result = result and ex.evaluate(self.C["AS"]["P"], self.C["AS"]["A"], self.C["AS"]["D"])
         return result
     
     def UpdateAS(self):
+        """
+        This method is used to update the affective state.
+        """
         self.DISPLACEMENT = 0.5
         
         if isinstance(self.AS, PAD): 
@@ -847,11 +981,6 @@ class AffectiveAgent(agentspeak.runtime.Agent):
             if calculated_as != None:
                  # PAD current_as = (PAD) getAS(); 
                 current_as = self.AS
-                print("expectedness: " + str(self.AV["expectedness"]) +
-                        ", desirability: " + str(self.AV["desirability"]) +
-                        ", causal_attribution: " + str(self.AV["causal_attribution"]) +
-                        ", likelihood: " + str(self.AV["likelihood"]) +
-                        ", controllability: " + str(self.AV["controllability"]))
                 
                 tmpVal = None
                 vDiff_P = None
@@ -910,11 +1039,17 @@ class AffectiveAgent(agentspeak.runtime.Agent):
                 pad.setD(  round(tmpVal * 10.0) / 10.0 )
                  
                 self.AS = pad
-                AClabel = self.AC.getACLabel(self.AS) # not implemented yet
+                AClabel = self.getACLabel(self.AS) 
                 self.AfE = AClabel
         pass
                  
     def getACLabel(self):
+        """
+        This method is used to get the affective category label.
+        
+        Returns:
+            list: Affective category label.
+        """
         
         result = []
         matches = True
@@ -938,6 +1073,12 @@ class AffectiveAgent(agentspeak.runtime.Agent):
                         
                 
     def deriveASFromAppraisalVariables(self):
+        """
+        This method is used to derive the affective state from the appraisal variables.
+        
+        Returns:
+            PAD: Affective state.
+        """
         em = []
         if self.AV["expectedness"] != None and self.AV["expectedness"] < 0:
             em.append("surprise")
@@ -995,25 +1136,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
     
     
     def cleanAffectivelyRelevantEvents(self) -> bool:
-        return True
-        
-
-    def applyEmpathy(self) -> bool:
-        self.current_step = "EmSel"
-        return True
-    
-    def applyEmotionSelection(self) -> bool:
-        self.current_step = "UpAs"
-        return True
-    
-    def applyUpdateAffState(self) -> bool:
-        self.current_step = "SelCs"
-        return True
-    
-    def applySelectCopingStrategy(self) -> bool:
-        self.current_step = "Cope"
-        return True
-        
+        return True    
             
     def step(self) -> bool:
         """
@@ -1099,9 +1222,7 @@ class AffectiveAgent(agentspeak.runtime.Agent):
         Returns:
             bool: True if the instruction was executed
         """
-        try: 
-            print(self.intention_selected)
-            print(self.beliefs)
+        try:
             if self.intention_selected.instr.f(self, self.intention_selected):
                 self.intention_selected.instr = self.intention_selected.instr.success # We set the intention.instr to the instr.success
             else:
@@ -1236,7 +1357,6 @@ class Environment(agentspeak.runtime.Environment):
             concern = Concern(head, consequence)
             agent.add_concern(concern)
             concern_value = agent.test_concern(head, agentspeak.runtime.Intention(), concern)
-            print(concern_value)
             
             
 
@@ -1447,88 +1567,8 @@ class PairEventDesirability:
 class AffectiveState:
 
     """
-
-    JAVA IMPLEMENTATION:
-
-    public abstract class AffectiveState {
-        
-        protected Logger logger = Logger.getLogger(AffectiveState.class.getName());
-        
-        private List<Double> components = null;
-
-        private List<String> affectiveLabels ;
-        
-        public abstract void setAffectiveLabels();
-        public abstract AffectiveState clone();
-        
-        /**
-        * Initializes the affective state with zero for all of 
-        * its components. The affective label of each of the components is 
-        * also initialized
-        */
-        public void init(){
-            affectiveLabels = new ArrayList<String>();
-            components = new ArrayList<Double>();
-            setAffectiveLabels();
-            if (affectiveLabels!=null)
-                for (int i=0; i<affectiveLabels.size(); i++)
-                    components.add(0.0);
-            components = new ArrayList<Double>( Collections.nCopies( affectiveLabels.size(),0.0));
-        };
-        
-        public AffectiveState() {
-            init();
-        }
-        
-        public List<String> getAffectiveLabels(){
-            return affectiveLabels;
-        }
-
-        public List<Double> getComponents() {
-            return components;
-        }
-
-        public void setComponents(List<Double> comp) throws Exception {
-            if (comp!=null){
-                if ( propperSize(comp.size()))
-                    this.components = comp;
-                else
-                    throw new Exception("Incorrect input data size");
-            }
-                
-        }
-
-        public int getComponentsNumber() {
-            int nr = 0;
-            if (components != null)
-                nr = components.size();
-            /*else
-                if (labels != null)
-                    nr = labels.size();*/
-            return nr;
-        }
-
-        
-        /**
-        * @param size
-        * @return True if the value of <i>size</i> is equal to the 
-        * number of components
-        */
-        boolean propperSize(int size){
-            boolean result = false;
-            if (components != null)
-                result = (size == components.size());
-            else
-                /*if (labels!=null)
-                    result = (size == labels.size());
-                else*/
-                    result = true;
-            return result;
-        }
-        
-        }
+    This class is used to represent the affective state of the agent
     """                          
-    # Translating the java code to python
     
     components = None
     affectiveLabels = None
@@ -1546,20 +1586,38 @@ class AffectiveState:
         self.components = [0.0 for i in range(len(self.affectiveLabels))]
     
     def setAffectiveLabels(self):
+        """
+        This method is used to set the affective labels
         
-        """NOT IMPLEMENTED YET, I THINK"""
+        """
         pass
       
-    def clone(self):
-        pass
     
     def getAffectiveLabels(self):
+        """
+        This method is used to get the affective labels
+
+        Returns:
+            list: Affective labels
+        """
         return self.affectiveLabels
     
     def getComponents(self):
+        """
+        This method is used to get the components of the affective state
+        
+        Returns:
+            list: Components of the affective state
+        """
         return self.components
     
     def setComponents(self, comp):
+        """
+        This method is used to set the components of the affective state
+         
+        Args:
+            comp (list): Components of the affective state
+        """
         if comp:
             if self.propperSize(len(comp)):
                 self.components = comp
@@ -1567,120 +1625,42 @@ class AffectiveState:
                 raise Exception("Incorrect input data size")
             
     def getComponentsNumber(self):
+        """
+        This method is used to get the number of components of the affective state
+        
+        Returns:
+            int: Number of components of the affective state
+        """
         nr = 0
         if self.components:
             nr = len(self.components)
         return nr
     
     def propperSize(self, size):
+        """
+        This method is used to check if the size of the affective state is correct
+        
+        Args:
+            size (int): Size of the affective state
+             
+        Returns: 
+            bool: True if the size of the affective state is correct, False otherwise
+        """
         result = False
         if self.components:
             result = (size == len(self.components))
         else:
             result = True
         return result
+    
+    def clone(self):
+        pass
      
 class PAD(AffectiveState):
     """
-     JAVA IMPLEMENTATION:
-     
-     public class PAD extends AffectiveState{
-    public static enum PADlabels  { pleassure , arousal, dominance}
-    
-    public PAD(){
-        super();
-    }
-    
-    public PAD(Double P,Double A,Double D){
-        super();
-        setP(P);setA(A);setD(D);
-    }
-    
-    @Override
-    public void setAffectiveLabels() {
-        getAffectiveLabels().add(PADlabels.pleassure.toString());
-        getAffectiveLabels().add(PADlabels.arousal.toString());
-        getAffectiveLabels().add(PADlabels.dominance.toString());
-    }
-
-    @Override
-    public AffectiveState clone() {
-        PAD pad = new PAD();
-        pad.init();
-        for (int i=0; i<getComponentsNumber(); i++)
-            pad.getComponents().add(getComponents().get(i));
-        return pad;
-    }
-    
-    public static boolean sameOctant(PAD as1, PAD as2){
-        boolean result = false;
-        if (as1!=null && as2!=null)
-            result = (  Math.signum( as1.getP()) == Math.signum( as2.getP()) && 
-                        Math.signum( as1.getA()) == Math.signum( as2.getA()) &&
-                        Math.signum( as1.getD()) == Math.signum( as2.getD()));
-        return result;
-        
-    }
-
-    /**
-     * @param as Current sffective state
-     * @param vec Virtual Emotion Center (calculated affective state)
-     * @return <code>True</code> if at least one <i>as</i>'s dimension is between the 
-     * corresponding <i>vec</i>'s dimension (excluding it) and zero. 
-     * Otherwise it returns <code>False</code>
-     */
-    public static boolean betweenVECandCenter(PAD as, PAD vec){
-        boolean result = false;
-        if (as!=null && vec!=null)
-        	result =(
-        				vec.getP()<=0 & (	vec.getP() < as.getP() & as.getP() <= 0 )|
-        				vec.getP()> 0 & ( 0 <= as.getP() & as.getP() < vec.getP() )
-        					)|
-        			(
-            				vec.getA()<=0 & (	vec.getA() < as.getA() & as.getA() <= 0 )|
-            				vec.getA()> 0 & ( 0 <= as.getA() & as.getA() < vec.getA() )
-            				)|
-        			(
-            				vec.getD()<=0 & (	vec.getD() < as.getD() & as.getD() <= 0 )|
-            				vec.getD()> 0 & ( 0 <= as.getD() & as.getD() < vec.getD() )
-            				)
-        			;
-
-           /* ( (vec.getP()<0&as.getP()>vec.getP())|(vec.getP()>0&as.getP()<vec.getP()) )|
-                        ( (vec.getA()<0&as.getA()>vec.getA())|(vec.getA()>0&as.getA()<vec.getA()) )|
-                        ( (vec.getD()<0&as.getD()>vec.getD())|(vec.getD()>0&as.getD()<vec.getD()) ) ; */
-        return result;
-        
-    }
-
-    public Double getP(){
-        return getComponents().get(PADlabels.pleassure.ordinal());
-    }
-    
-    public void setP(Double P){
-        getComponents().set(PADlabels.pleassure.ordinal(), P);
-    }
-
-    public Double getA(){
-        return getComponents().get(PADlabels.arousal.ordinal());
-    }
-    
-    public void setA(Double P){
-        getComponents().set(PADlabels.arousal.ordinal(), P);
-    }
-    
-    public Double getD(){
-        return getComponents().get(PADlabels.dominance.ordinal());
-    }
-    
-    public void setD(Double P){
-        getComponents().set(PADlabels.dominance.ordinal(), P);
-    }
-    }
-
+    This class is used to represent the PAD of the agent    
     """
      
-     # Translating the java code to python
      
     class PADlabels(Enum):
         pleassure = 0
@@ -1689,17 +1669,26 @@ class PAD(AffectiveState):
         
     def __init__(self, P=None, A=None, D=None):
         super().__init__()
-        if P is not None and A is not None and D is not None:
+        if (P is not None) and (A is not None) and (D is not None):
             self.setP(P)
             self.setA(A)
             self.setD(D)
             
     def setAffectiveLabels(self):
+        """
+        This method is used to set the affective labels
+        """
         self.affectiveLabels.append(self.PADlabels.pleassure.name)
         self.affectiveLabels.append(self.PADlabels.arousal.name)
         self.affectiveLabels.append(self.PADlabels.dominance.name)
         
     def clone(self):
+        """
+        This method is used to clone the PAD
+         
+        Returns:
+            PAD: Cloned PAD
+        """
         pad = PAD()
         pad.init()
         for i in range(self.getComponentsNumber()):
@@ -1708,6 +1697,16 @@ class PAD(AffectiveState):
      
     @staticmethod
     def sameOctant(as1, as2):
+        """
+        This method is used to check if two affective states are in the same octant
+         
+        Args:
+            as1 (PAD): Affective state 1
+            as2 (PAD): Affective state 2
+            
+        Returns:
+            bool: True if the affective states are in the same octant, False otherwise
+        """
         result = False
         if as1 is not None and as2 is not None:
             result = (  np.sign(as1.getP()) == np.sign(as2.getP()) and 
@@ -1717,6 +1716,16 @@ class PAD(AffectiveState):
     
     @staticmethod
     def betweenVECandCenter(as1, as2):
+        """
+        This method is used to check if two affective states are between the vector and the center
+        
+        Args:
+            as1 (PAD): Affective state 1
+            as2 (PAD): Affective state 2
+            
+        Returns:
+            bool: True if the affective states are between the vector and the center, False otherwise
+        """
         result = False
         if as1 is not None and as2 is not None:
             result = ((as1.getP() < 0 and as2.getP() > as1.getP()) or (as1.getP() > 0 and as2.getP() < as1.getP())) or \
@@ -1744,482 +1753,3 @@ class PAD(AffectiveState):
         self.components[self.PADlabels.dominance.value] = D
         
         
-class Unifier:
-    
-    """
-    JAVA IMPLEMENTATION:
-    
-    public class Unifier implements Cloneable, Iterable<VarTerm> {
-
-    private static Logger logger = Logger.getLogger(Unifier.class.getName());
-
-    protected Map<VarTerm, Term> function = new HashMap<VarTerm, Term>();
-
-    /**
-     * gets the value for a Var, if it is unified with another var, gets this
-     * other's value
-     */
-    public Term get(String var) {
-        return get(new VarTerm(var));
-    }
-
-    public Term remove(VarTerm v) {
-        return function.remove(v);
-    }
-    
-    public Iterator<VarTerm> iterator() {
-        return function.keySet().iterator();
-    }
-    /**
-     * gets the value for a Var, if it is unified with another var, gets this
-     * other's value
-     */
-    public Term get(VarTerm vtp) {
-        Term vl = function.get(vtp);
-        if (vl != null && vl.isVar()) { // optimised deref
-            return get((VarTerm)vl);
-        }
-        /* vars in unifier are not negated anymore! (works like namespace)
-        if (vl == null) { // try negated value of the var
-            //System.out.println("for "+vtp+" try "+new VarTerm(vtp.negated(), vtp.getFunctor())+" in "+this);
-            vl = function.get( new VarTerm(vtp.negated(), vtp.getFunctor()) );
-            //System.out.println(" and found "+vl);
-            if (vl != null && vl.isVar()) { 
-                vl = get((VarTerm)vl);
-            }
-            if (vl != null && vl.isLiteral()) {
-                vl = vl.clone();
-                ((Literal)vl).setNegated(((Literal)vl).negated());
-            }            
-        }
-        */
-        return vl;
-    }
-    
-    public VarTerm getVarFromValue(Term vl) {
-        for (VarTerm v: function.keySet()) {
-            Term vvl = function.get(v);
-            if (vvl.equals(vl)) {
-                return v;
-            }
-        }
-        return null;
-    }
-
-    public boolean unifies(Trigger te1, Trigger te2) {
-        return te1.sameType(te2) && unifies(te1.getLiteral(), te2.getLiteral());
-    }
-
-    public boolean unifiesNoUndo(Trigger te1, Trigger te2) {
-        return te1.sameType(te2) && unifiesNoUndo(te1.getLiteral(), te2.getLiteral());
-    }
-
-    // ----- Unify for Predicates/Literals
-    
-    /** this version of unifies undo the variables' mapping 
-        if the unification fails. 
-        E.g. 
-          u.unifier( a(X,10), a(1,1) );
-        does not change u, i.e., u = {}
-     */
-    @SuppressWarnings({ "rawtypes", "unchecked" })
-    public boolean unifies(Term t1, Term t2) {
-        Map cfunction = cloneFunction();
-        if (unifiesNoUndo(t1,t2)) {
-            return true;
-        } else {
-            function = cfunction;
-            return false;
-        }
-    }
-    
-    @SuppressWarnings({ "unchecked", "rawtypes" })
-    private Map<VarTerm, Term> cloneFunction() {
-        return (Map<VarTerm, Term>)((HashMap)function).clone();
-        //return new HashMap<VarTerm, Term>(function);
-    }
-
-    /** this version of unifies does not undo the variables' mapping 
-        in case of failure. It is however faster than the version with
-        undo.
-        E.g. 
-          u.unifier( a(X,10), a(1,1) );
-        fails, but changes u to {X = 10} 
-    */
-    public boolean unifiesNoUndo(Term t1g, Term t2g) {
-
-        Pred np1 = null;
-        Pred np2 = null;
-        
-        if (t1g instanceof Pred && t2g instanceof Pred) {
-            np1 = (Pred)t1g;
-            np2 = (Pred)t2g;
-        
-            // tests when np1 or np2 are Vars with annots
-            if ((np1.isVar() && np1.hasAnnot()) || np2.isVar() && np2.hasAnnot()) {
-                if (!np1.hasSubsetAnnot(np2, this)) {
-                    return false;
-                }
-            }
-        }
-        
-        if (t1g.isCyclicTerm() && t2g.isCyclicTerm()) { // both are cycled terms
-            // unification of cyclic terms:
-            // remove the vars (to avoid loops) and test just the structure, then reintroduce the vars
-            VarTerm v1 = t1g.getCyclicVar();
-            VarTerm v2 = t2g.getCyclicVar();
-            remove(v1);
-            remove(v2);
-            try {
-                return unifiesNoUndo(new LiteralImpl((Literal)t1g), new LiteralImpl((Literal)t2g));
-            } finally {
-                function.put(v1, t1g);
-                function.put(v2, t1g);
-            }
-            
-        } else {
-            if (t1g.isCyclicTerm() && get(t1g.getCyclicVar()) == null) // reintroduce cycles in the unifier
-                function.put(t1g.getCyclicVar(), t1g);
-            if (t2g.isCyclicTerm() && get(t2g.getCyclicVar()) == null) 
-                function.put(t2g.getCyclicVar(), t2g);            
-        }
-        
-        // unify as Term
-        boolean ok = unifyTerms(t1g, t2g);
-
-        // if np1 is a var that was unified, clear its annots, as in
-        //      X[An] = p(1)[a,b]
-        // X is mapped to p(1) and not p(1)[a,b]
-        // (if the user wants the "remaining" annots, s/he should write
-        //      X[An|R] = p(1)[a,b]
-        // X = p(1), An = a, R=[b]
-        if (ok && np1 != null) { // they are predicates
-            if (np1.isVar() && np1.hasAnnot()) {
-                np1 = deref( (VarTerm)np1);
-                Term np1vl = function.get( (VarTerm) np1);
-                if (np1vl != null && np1vl.isPred()) {
-                    Pred pvl = (Pred)np1vl.clone();
-                    pvl.clearAnnots();
-                    bind((VarTerm) np1, pvl);
-                }
-            }
-            if (np2.isVar() && np2.hasAnnot()) {
-                np2 = deref( (VarTerm)np2);
-                Term np2vl = function.get((VarTerm) np2);
-                if (np2vl != null && np2vl.isPred()) {
-                    Pred pvl = (Pred)np2vl.clone(); 
-                    pvl.clearAnnots();
-                    bind((VarTerm) np2, pvl);
-                }
-            }
-        }
-        
-        return ok;
-    }
-
-    
-    // ----- Unify for Terms
-
-    protected boolean unifyTerms(Term t1g, Term t2g) {
-        // if args are expressions, apply them and use their values
-        if (t1g.isArithExpr())
-            t1g = t1g.capply(this);
-        if (t2g.isArithExpr())
-            t2g = t2g.capply(this);
-
-        final boolean t1gisvar = t1g.isVar();
-        final boolean t2gisvar = t2g.isVar();
-
-        // one of the args is a var
-        if (t1gisvar || t2gisvar) { 
-            final VarTerm t1gv = t1gisvar ? (VarTerm)t1g : null;
-            final VarTerm t2gv = t2gisvar ? (VarTerm)t2g : null;
-
-            // get their values
-            final Term t1vl = t1gisvar ? get(t1gv) : t1g;
-            final Term t2vl = t2gisvar ? get(t2gv) : t2g;
-
-            if (t1vl != null && t2vl != null) { // unifies the two values of the vars                
-                return unifiesNoUndo(t1vl, t2vl);
-            } else if (t1vl != null) { // unifies var with value
-                return bind(t2gv, t1vl);
-            } else if (t2vl != null) {
-                return bind(t1gv, t2vl);
-            } else {                 // unify two vars
-                if (! t1gv.getNS().equals(t2gv.getNS())) 
-                    return false;
-                
-                if (t1gv.negated() != t2gv.negated())
-                    return false;
-
-                bind(t1gv, t2gv);
-                return true;
-            }
-        }        
-        
-        // both terms are not vars
-        
-        // if any of the terms is not a literal (is a number or a
-        // string), they must be equal
-        // (for unification, lists are literals)
-        if (!t1g.isLiteral() && !t1g.isList() || !t2g.isLiteral() && !t2g.isList())
-            return t1g.equals(t2g);
-
-        // both terms are literal
-
-        Literal t1s = (Literal)t1g;
-        Literal t2s = (Literal)t2g;
-
-        // different arities
-        final int ts = t1s.getArity();
-        if (ts != t2s.getArity())
-            return false;
-        
-        // if both are literal, they must have the same negated
-        if (t1s.negated() != t2s.negated())
-            return false;
-            
-        // different functor
-        if (!t1s.getFunctor().equals(t2s.getFunctor()))  
-            return false;
-        
-        // different name space
-        if (!unifiesNamespace(t1s, t2s))
-            return false;
-
-        // unify inner terms
-        // do not use iterator! (see ListTermImpl class)
-        for (int i = 0; i < ts; i++)
-            if (!unifiesNoUndo(t1s.getTerm(i), t2s.getTerm(i)))
-                return false;
-
-        // the first's annots must be subset of the second's annots
-        if ( ! t1s.hasSubsetAnnot(t2s, this))
-            return false;
-        
-        return true;
-    }
-
-    private boolean unifiesNamespace(Literal t1s, Literal t2s) {
-        if (t1s == Literal.DefaultNS && t2s == Literal.DefaultNS) { // if both are the default NS
-            return true;
-        }
-        Atom nst1 = (t1s == Literal.DefaultNS ? Literal.DefaultNS : t1s.getNS());
-        Atom nst2 = (t2s == Literal.DefaultNS ? Literal.DefaultNS : t2s.getNS());
-        //System.out.println(nst1.getFunctor()+" == "+ nst2.getFunctor()); //+" ==> "+unifiesNoUndo(nst1, nst2));
-        return unifiesNoUndo(nst1, nst2);
-    }
-    
-    public VarTerm deref(VarTerm v) {
-        Term vl = function.get(v);
-        // original def (before optimise)
-        //   if (vl != null && vl.isVar())
-        //      return deref(vl);
-        //   return v;
-        
-        VarTerm first = v;
-        while (vl != null && vl.isVar()) {
-            v  = (VarTerm)vl;
-            vl = function.get(v);
-        }
-        if (first != v) {
-            function.put(first, v); // optimise map
-        }            
-        return v;
-    }
-    
-    public void bind(VarTerm vt1, VarTerm vt2) {
-        vt1 = getVarForUnifier(vt1);
-        vt2 = getVarForUnifier(vt2);
-        final int comp = vt1.compareTo(vt2); 
-        //System.out.println(vt1+"="+vt2+" ==> "+getVarForUnifier(vt1) +"="+ getVarForUnifier(vt2)+" in "+this+" cmp="+comp);
-        if (comp < 0) {
-            function.put(vt1, vt2);
-        } else if (comp > 0){
-            function.put(vt2, vt1);
-        } // if they are the same (comp == 0), do not bind
-    }
-    
-    public boolean bind(VarTerm vt, Term vl) {
-        if (vt.negated()) { // negated vars unifies only with negated literals
-            if (!vl.isLiteral() || !((Literal)vl).negated()) {
-                return false;
-            } 
-            vl = (Literal)vl.clone();
-            ((Literal)vl).setNegated(Literal.LPos);
-        }     
-        
-        // namespace
-        if (vl.isLiteral()) {
-            Literal lvl = (Literal)vl;
-            if (! unifiesNamespace(vt, lvl) )
-                return false;
-            if (lvl.getFunctor().startsWith(NameSpace.LOCAL_PREFIX)) // cannot unify a var with a local namespace
-                return false;
-            if (lvl.getNS() != Literal.DefaultNS) 
-                vl = lvl.cloneNS(Literal.DefaultNS);
-        }
-
-        if (!vl.isCyclicTerm() && vl.hasVar(vt, this)) { 
-            vl = new CyclicTerm((Literal)vl, (VarTerm)vt.clone());
-        }
-
-        function.put(getVarForUnifier(vt), vl);
-        return true;
-    }
-    
-    private VarTerm getVarForUnifier(VarTerm v) {
-        v = (VarTerm)deref(v).cloneNS(Literal.DefaultNS);
-        v.setNegated(Literal.LPos);
-        return v;
-    }
-        
-    public void clear() {
-        function.clear();
-    }
-
-    public String toString() {
-        return function.toString();
-    }
-    
-    public Term getAsTerm() {
-        ListTerm lf = new ListTermImpl();
-        ListTerm tail = lf;
-        for (VarTerm k: function.keySet()) {
-            Term vl = function.get(k).clone();
-            if (vl instanceof Literal)
-                ((Literal)vl).makeVarsAnnon();
-            Structure pair = ASSyntax.createStructure("map", UnnamedVar.create(k.toString()), vl); // the var must be changed to avoid cyclic references latter
-            tail = tail.append(pair);
-        }
-        return lf;
-    }
-
-    public int size() {
-        return function.size();
-    }
-
-    /** add all unifications from u */
-    public void compose(Unifier u) {
-        for (VarTerm k: u.function.keySet()) {
-            Term current = get(k);
-            Term kValue = u.function.get(k);
-            if (current != null && (current.isVar() || kValue.isVar())) { // current unifier has the new var
-                unifies(kValue, current);
-            } else {
-                function.put( (VarTerm)k.clone(), kValue.clone());
-            }
-        }
-    }
-
-    public Unifier clone() {
-        try {
-            Unifier newUn = new Unifier();
-            newUn.function = cloneFunction();
-            //newUn.compose(this);
-            return newUn;
-        } catch (Exception e) {
-            logger.log(Level.SEVERE, "Error cloning unifier.",e);
-            return null;
-        }
-    }
-    
-    @Override
-    public int hashCode() {
-        int s = 0;
-        for (VarTerm v: function.keySet()) {
-            s += v.hashCode();
-        }
-        return s * 31;
-    }
-    
-    public boolean equals(Object o) {
-        if (o == null) return false;
-        if (o == this) return true;
-        if (o instanceof Unifier) return function.equals( ((Unifier)o).function);
-        return false;
-    }
-    
-    /** get as XML */
-    public Element getAsDOM(Document document) {
-        Element u = (Element) document.createElement("unifier");
-        for (VarTerm v: function.keySet()) {
-            Element ev = v.getAsDOM(document);
-            Element vl = (Element) document.createElement("value");
-            vl.appendChild( function.get(v).getAsDOM(document));
-            Element map = (Element) document.createElement("map");
-            map.appendChild(ev);
-            map.appendChild(vl);
-            u.appendChild(map);
-        }
-        return u;
-    }
-    }
-
-    """
-
-    # Translating the java code to python
-     
-    def __init__(self):
-        self.function = {}
-    
-    def get(self, var):
-        return self.function.get(var)
-    
-    def remove(self, v):
-        return self.function.remove(v)
-    
-    def iterator(self):
-        return self.function.keys().iterator()
-    
-    def get(self, vtp):
-        vl = self.function.get(vtp)
-        if vl is not None and vl.isVar():
-            return self.get(vl)
-        return vl   
-    
-    def getVarFromValue(self, vl):
-        for v in self.function.keys():
-            vvl = self.function.get(v)
-            if vvl.equals(vl):
-                return v
-        return None
-    
-    def unifies(self, te1, te2):
-        return te1.sameType(te2) and self.unifies(te1.getLiteral(), te2.getLiteral())
-    
-    def unifiesNoUndo(self, te1, te2):
-        return te1.sameType(te2) and self.unifiesNoUndo(te1.getLiteral(), te2.getLiteral())
-    
-    def unifies(self, t1, t2):
-        cfunction = self.cloneFunction()
-        if self.unifiesNoUndo(t1, t2):
-            return True
-        else:
-            self.function = cfunction
-            return False
-        
-    def cloneFunction(self):
-        return self.function.clone()
-    
-    def unifiesNoUndo(self, t1g, t2g):
-        n1 = None
-        n2 = None
-        if t1g.isVar() and t1g.hasAnnot() or t2g.isVar() and t2g.hasAnnot():
-            if not t1g.hasSubsetAnnot(t2g, self):
-                return False
-        if t1g.isCyclicTerm() and t2g.isCyclicTerm():
-            v1 = t1g.getCyclicVar()
-            v2 = t2g.getCyclicVar()
-            self.remove(v1)
-            self.remove(v2)
-            try:
-                return self.unifiesNoUndo(LiteralImpl(t1g), LiteralImpl(t2g))
-            finally:
-                self.function.put(v1, t1g)
-                self.function.put(v2, t1g)
-        else:
-            if t1g.isCyclicTerm() and self.get(t1g.getCyclicVar()) is None:
-                self.function.put(t1g.getCyclicVar(), t1g)
-            if t2g.isCyclicTerm() and self.get(t2g.getCyclicVar()) is None:
-                self.function.put(t2g.getCyclicVar(), t2g)
